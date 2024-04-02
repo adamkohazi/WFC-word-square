@@ -1,7 +1,7 @@
 import wordmatrix
 import wavefunction
 
-size = [5,4]
+size = [5,5]
 
 def optimize_dictionary (lengths, dict):
     opt_dict = []
@@ -17,8 +17,8 @@ def get_dictionary_word_list(filename):
         return f.read().split()
 
 # Loading words to a dictionary for generation
-#dict = get_dictionary_word_list("dictionary_EN.txt")
-dict = get_dictionary_word_list("google-10000-english.txt")
+dict = get_dictionary_word_list("dictionary_EN.txt")
+#dict = get_dictionary_word_list("google-10000-english.txt")
 dict = optimize_dictionary(size, dict)
 
 table = wordmatrix.Wordmatrix(size, dict)

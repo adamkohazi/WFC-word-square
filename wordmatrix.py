@@ -18,7 +18,7 @@ class Wordmatrix(object):
         self.dictionary = dictionary
 
         # Initially every letter is an option for every field
-        self.options = [[dict.fromkeys(string.ascii_lowercase, 1) for w in range(self.width)] for h in range(self.height)]
+        self.options = [[dict.fromkeys(string.ascii_lowercase, 9999) for w in range(self.width)] for h in range(self.height)]
         self.blacklist = [[[] for w in range(self.width)] for h in range(self.height)]
         #self.possibilities = [[[] for w in range(self.width)] for h in range(self.height)]
         self.history = []
@@ -41,26 +41,6 @@ class Wordmatrix(object):
     def get(self, x, y):
         return self.options[y][x]
 
-    def find_frequencies(self, elements):
-        frequencies = [{} for element in elements]
-
-        # Convert elements to regular expression:
-        regex = ""
-        for element in elements:
-            regex += "[" + ''.join([letter for letter in element]) + "]"
-        regex += "$"
-        print(regex)
-        r = re.compile(regex, re.UNICODE)
-
-        # Find letter options/counts based on matching words
-        for word in list(filter(r.match, self.dictionary)):
-            for position, letter in enumerate(word):
-                if letter not in frequencies[position]:
-                    frequencies[position][letter] = 0
-                frequencies[position][letter] += 1
-        
-        return frequencies
-    
     def backup(self):
         self.history.append(deepcopy(self.options))
         return len(self.history)
@@ -72,6 +52,26 @@ class Wordmatrix(object):
     def add_blacklist(self, x, y, letter):
         self.blacklist[y][x].append(letter)
 
+    def find_frequencies(self, elements):
+        frequencies = [{} for element in elements]
+
+        # Convert elements to regular expression:
+        regex = ""
+        for element in elements:
+            regex += "[" + ''.join([letter for letter in element if element[letter]>0]) + "]"
+        regex += "$"
+        #print(regex)
+        r = re.compile(regex, re.UNICODE)
+
+        # Find letter options/counts based on matching words
+        for word in list(filter(r.match, self.dictionary)):
+            for position, letter in enumerate(word):
+                if letter not in frequencies[position]:
+                    frequencies[position][letter] = 0
+                frequencies[position][letter] += 1
+        
+        return frequencies
+
     def update_possibilities(self):
         horizontal = [[[] for w in range(self.width)] for h in range(self.height)]
         vertical = [[[] for w in range(self.width)] for h in range(self.height)]
@@ -81,14 +81,23 @@ class Wordmatrix(object):
                 old_weight = sum(self.options[y][x][letter] for letter in self.options[y][x])
         
         while(True):
+            #Remove blacklisted letters:
+            for y in range(self.height):
+                for x in range(self.width):
+                    for letter in self.blacklist[y][x]:
+                        self.options[y][x].pop(letter, None)
+                        #print("letter popped: ", x, ", ", y, ": ", letter)
+            
             #horizontal words
             for y in range(self.height):
                 for x, frequencies in enumerate(self.find_frequencies(self.get_row(y))):
                     horizontal[y][x] = frequencies
+
             #vertical words
             for x in range(self.width):
                 for y, frequencies in enumerate(self.find_frequencies(self.get_column(x))):
-                    horizontal[y][x] = frequencies
+                    vertical[y][x] = frequencies
+
             #merge
             for y in range(self.height):
                 for x in range(self.width):
@@ -96,12 +105,6 @@ class Wordmatrix(object):
                     for letter in horizontal[y][x]:
                         if letter in vertical[y][x]:
                             self.options[y][x][letter]=min(horizontal[y][x][letter], vertical[y][x][letter])
-            #Remove blacklisted letters:
-            for y in range(self.height):
-                for x in range(self.width):
-                    for letter in self.blacklist[y][x]:
-                        self.options[y][x].pop(letter, None)
-                        #print("letter popped: ", x, ", ", y, ": ", letter)
 
             #Calculate new weight
             for y in range(self.height):
