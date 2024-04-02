@@ -54,6 +54,7 @@ class Wavefunction(object):
         
         #Print results
         self.wordmatrix.print_defined()
+        #self.wordmatrix.print_options()
 
 
     def find_min_entropy(self):
