@@ -10,7 +10,7 @@ class Wavefunction(object):
         while not self.wordmatrix.is_fully_defined():
             self.iterate()
         
-        self.wordmatrix.print_defined()
+        self.wordmatrix.print_options()
     
     def iterate(self):
         """Performs a single iteration of the Wavefunction Collapse
@@ -40,7 +40,7 @@ class Wavefunction(object):
             if len(self.history) == 0:
                 print("No more options")
                 print(self.wordmatrix.blacklist)
-                os.execl(sys.executable, sys.executable, *sys.argv)
+                quit()
             self.wordmatrix.restore()
             
             #Learn from the mistake
