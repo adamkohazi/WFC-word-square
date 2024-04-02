@@ -1,148 +1,112 @@
 import re
+import string
 import math
 import random
 from copy import deepcopy
 
 class Wordmatrix(object):
+    """Class for keeping track of all information related to a wordmatrix board.
 
-    @staticmethod
-    def list_options (dict):
-        options = {}
-        for word in dict:
-            for letter in word:
-                if letter not in options:
-                    options[letter] = 1
-        return options
-
-    @staticmethod
-    def optimize_dictionary (lengths, dict):
-        opt_dict = []
-        for word in dict:
-            if len(word) in lengths:
-                if word.isalpha():
-                    opt_dict.append(word.lower())
-        return opt_dict
+    Attributes:
+        hand: Counter class keeping track of letters available in hand.
+        score: Integer value keeping track of the current score.
+        isBot: Boolean indicating if the player is a bot or not.
+    """
 
     def __init__(self, size, dictionary):
         self.width, self.height = size
+        self.dictionary = dictionary
 
-        #optimize directory
-        self.dictionary = self.optimize_dictionary(size, dictionary)
-
-        options = self.list_options(self.dictionary)
-
-        self.matrix = [[options]*self.width for i in range(self.height)]
-        self.blacklist = [[[] for _ in range(self.width)] for _ in range(self.height)]
+        # Initially every letter is an option for every field
+        self.options = [[dict.fromkeys(string.ascii_lowercase, 1) for w in range(self.width)] for h in range(self.height)]
+        self.blacklist = [[[] for w in range(self.width)] for h in range(self.height)]
+        #self.possibilities = [[[] for w in range(self.width)] for h in range(self.height)]
         self.history = []
-
-        for y in range(self.height):
-            for x in range(self.width):
-                self.matrix[y][x] = dict(options)
     
         self.update_possibilities()
     
     def get_row(self, row):
-        elements = []
-        for x in range(self.width):
-            elements.append(self.matrix[row][x])
-        return elements
+        return self.options[row]
 
-    def get_column(self, col):
-        elements = []
-        for y in range(self.height):
-            elements.append(self.matrix[y][col])
-        return elements
+    def get_column(self, column):
+        return [row[column] for row in self.options]
+    
+    def set_row(self, row, elements):
+        self.options[row] = elements
+
+    def set_column(self, column, elements):
+        for index in len(self.options):
+            self.options[index][column]=elements[index]
 
     def get(self, x, y):
-        return self.matrix[y][x]
+        return self.options[y][x]
 
-    @staticmethod
-    def elements_to_regex(elements):
-        if len(elements)==0:
-            print("oh no", elements)
-            return
+    def find_frequencies(self, elements):
+        frequencies = [{} for element in elements]
+
+        # Convert elements to regular expression:
         regex = ""
         for element in elements:
-            regex += "["
-            for letter in element:
-                regex += letter
-            regex += "]"
+            regex += "[" + ''.join([letter for letter in element]) + "]"
         regex += "$"
-        return regex
-        
-
-    def find_probabilities(self, regex):
+        print(regex)
         r = re.compile(regex, re.UNICODE)
-        filt = list(filter(r.match, self.dictionary))
-        weights = {}
-        for word in filt:
-            i = 0
-            for letter in word:
-                if i not in weights:
-                    weights[i]={}
-                if letter not in weights[i]:
-                    weights[i][letter] = 0
-                weights[i][letter] += 1
-                i += 1
-        return weights
+
+        # Find letter options/counts based on matching words
+        for word in list(filter(r.match, self.dictionary)):
+            for position, letter in enumerate(word):
+                if letter not in frequencies[position]:
+                    frequencies[position][letter] = 0
+                frequencies[position][letter] += 1
+        
+        return frequencies
     
     def backup(self):
-        self.history.append(deepcopy(self.matrix))
+        self.history.append(deepcopy(self.options))
         return len(self.history)
     
     def restore(self):
-        self.matrix = self.history.pop()
+        self.options = self.history.pop()
         return len(self.history)
 
     def add_blacklist(self, x, y, letter):
         self.blacklist[y][x].append(letter)
 
     def update_possibilities(self):
-        horizontal = [[{}]*self.width for i in range(self.height)]
-        vertical = [[{}]*self.width for i in range(self.height)]
+        horizontal = [[[] for w in range(self.width)] for h in range(self.height)]
+        vertical = [[[] for w in range(self.width)] for h in range(self.height)]
+        old_total_options = 0
         for y in range(self.height):
             for x in range(self.width):
-                old_weight = sum(self.matrix[y][x][letter] for letter in self.matrix[y][x])
+                old_weight = sum(self.options[y][x][letter] for letter in self.options[y][x])
+        
         while(True):
             #horizontal words
             for y in range(self.height):
-                elements = self.get_row(y)
-                regex = self.elements_to_regex(elements)
-                weights = self.find_probabilities(regex)
-                x = 0
-                for w in weights:
-                    horizontal[y][x] = weights[w]
-                    x += 1
-            #print("horizontal:\n", horizontal)
+                for x, frequencies in enumerate(self.find_frequencies(self.get_row(y))):
+                    horizontal[y][x] = frequencies
             #vertical words
             for x in range(self.width):
-                elements = self.get_column(x)
-                regex = self.elements_to_regex(elements)
-                weights = self.find_probabilities(regex)
-                y = 0
-                for w in weights:
-                    vertical[y][x] = weights[w]
-                    y += 1
-            #print("vertical:\n", vertical)
+                for y, frequencies in enumerate(self.find_frequencies(self.get_column(x))):
+                    horizontal[y][x] = frequencies
             #merge
             for y in range(self.height):
                 for x in range(self.width):
-                    self.matrix[y][x]={}
+                    self.options[y][x]={}
                     for letter in horizontal[y][x]:
                         if letter in vertical[y][x]:
-                            self.matrix[y][x][letter]=min(horizontal[y][x][letter], vertical[y][x][letter])
-            #print("merge:\n", self.matrix)
+                            self.options[y][x][letter]=min(horizontal[y][x][letter], vertical[y][x][letter])
             #Remove blacklisted letters:
             for y in range(self.height):
                 for x in range(self.width):
                     for letter in self.blacklist[y][x]:
-                        self.matrix[y][x].pop(letter, None)
+                        self.options[y][x].pop(letter, None)
                         #print("letter popped: ", x, ", ", y, ": ", letter)
 
             #Calculate new weight
             for y in range(self.height):
                 for x in range(self.width):
-                    new_weight = sum(self.matrix[y][x][letter] for letter in self.matrix[y][x])
+                    new_weight = sum(self.options[y][x][letter] for letter in self.options[y][x])
             #check if there is a 0 weight
             if self.is_deadend():
                 break
@@ -154,14 +118,14 @@ class Wordmatrix(object):
         
             
     def shannon_entropy(self, x, y) -> float:
-        """Calculates the Shannon Entropy of the wavefunction at
-        `co_ords`.
+        """Calculates the Shannon Entropy of the wavefunction at given
+        coordinates.
         """
 
         sum_of_weights = 0
         sum_of_weight_log_weights = 0
-        for letter in self.matrix[y][x]:
-            weight = self.matrix[y][x][letter]
+        for letter in self.options[y][x]:
+            weight = self.options[y][x][letter]
             sum_of_weights += weight
             sum_of_weight_log_weights += weight * math.log(weight)
 
@@ -175,24 +139,24 @@ class Wordmatrix(object):
         return entropies
 
     def is_defined(self, x, y):
-        if len(self.matrix[y][x]) == 1:
+        if len(self.options[y][x]) == 1:
             return True
         return False
     
     def is_deadend(self):
         for y in range(self.height):
             for x in range(self.width):
-                if len(self.matrix[y][x]) == 0:
+                if len(self.options[y][x]) == 0:
                     return True
         return False
 
     
     def define(self, x, y):
-        total_weight = sum(self.matrix[y][x][letter] for letter in self.matrix[y][x])
+        total_weight = sum(self.options[y][x][letter] for letter in self.options[y][x])
         rnd = random.random() * total_weight
 
-        for letter in self.matrix[y][x]:
-            rnd -= self.matrix[y][x][letter]
+        for letter in self.options[y][x]:
+            rnd -= self.options[y][x][letter]
             if rnd < 0:
                 self.set(x, y, letter)
                 return letter
@@ -205,7 +169,7 @@ class Wordmatrix(object):
         return True
     
     def set(self, x, y, letter):
-        self.matrix[y][x] = {letter : 1}
+        self.options[y][x] = {letter : 1}
 
     def print_defined(self):
         out = "   "
@@ -220,6 +184,63 @@ class Wordmatrix(object):
                 else:
                     out += "   "
             out += "\n"
+        print(out)
+    
+    def print_options(self):
+        #Column headers
+        out = "   |"
+        for x in range(self.width):
+            out += "   " + str(x) + "  |"
+        out += "\n"
+
+        #Column header separator
+        out += "---|"
+        for x in range(self.width):
+            out += "------|"
+        out += "\n"
+
+        #Row headers
+        for y in range(self.height):
+            out += "   |"
+            for x in range(self.width):
+                for letter in "abcdef":
+                    out += letter if letter in self.options[y][x] else " "
+                out += "|"
+            out += "\n"
+
+            out += "   |"
+            for x in range(self.width):
+                for letter in "ghijkl":
+                    out += letter if letter in self.options[y][x] else " "
+                out += "|"
+            out += "\n"
+
+            out += " "+ str(y) +" |"
+            for x in range(self.width):
+                for letter in "mnopqr":
+                    out += letter if letter in self.options[y][x] else " "
+                out += "|"
+            out += "\n"
+
+            out += "   |"
+            for x in range(self.width):
+                for letter in "stuvwx":
+                    out += letter if letter in self.options[y][x] else " "
+                out += "|"
+            out += "\n"
+
+            out += "   |"
+            for x in range(self.width):
+                for letter in "yz    ":
+                    out += letter if letter in self.options[y][x] else " "
+                out += "|"
+            out += "\n"
+
+            out += "---|"
+            for x in range(self.width):
+                out += "------|"
+            out += "\n"
+
         print(out)
     
     
