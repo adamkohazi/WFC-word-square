@@ -5,12 +5,13 @@ class Wavefunction(object):
     def __init__(self, matrix):
         self.wordmatrix = matrix
         self.history = []
+        self.wordmatrix.print_options()
 
     def run(self):
         while not self.wordmatrix.is_fully_defined():
             self.iterate()
         
-        self.wordmatrix.print_options()
+        self.wordmatrix.print_defined()
     
     def iterate(self):
         """Performs a single iteration of the Wavefunction Collapse
@@ -53,8 +54,8 @@ class Wavefunction(object):
             self.wordmatrix.update_possibilities()
         
         #Print results
-        self.wordmatrix.print_defined()
-        #self.wordmatrix.print_options()
+        #self.wordmatrix.print_defined()
+        self.wordmatrix.print_options()
 
 
     def find_min_entropy(self):

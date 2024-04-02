@@ -73,51 +73,50 @@ class Wordmatrix(object):
         return frequencies
 
     def update_possibilities(self):
-        horizontal = [[[] for w in range(self.width)] for h in range(self.height)]
-        vertical = [[[] for w in range(self.width)] for h in range(self.height)]
         old_total_options = 0
         for y in range(self.height):
             for x in range(self.width):
-                old_weight = sum(self.options[y][x][letter] for letter in self.options[y][x])
+                old_total_options += sum(self.options[y][x][letter] for letter in self.options[y][x])
         
         while(True):
             #Remove blacklisted letters:
             for y in range(self.height):
                 for x in range(self.width):
                     for letter in self.blacklist[y][x]:
-                        self.options[y][x].pop(letter, None)
+                        self.options[y][x][letter] = 0
                         #print("letter popped: ", x, ", ", y, ": ", letter)
             
             #horizontal words
             for y in range(self.height):
                 for x, frequencies in enumerate(self.find_frequencies(self.get_row(y))):
-                    horizontal[y][x] = frequencies
+                    for letter in self.options[y][x]:
+                        if letter not in frequencies:
+                            self.options[y][x][letter] = 0
+                        else:
+                            self.options[y][x][letter] = min(self.options[y][x][letter], frequencies[letter])
 
             #vertical words
             for x in range(self.width):
                 for y, frequencies in enumerate(self.find_frequencies(self.get_column(x))):
-                    vertical[y][x] = frequencies
-
-            #merge
-            for y in range(self.height):
-                for x in range(self.width):
-                    self.options[y][x]={}
-                    for letter in horizontal[y][x]:
-                        if letter in vertical[y][x]:
-                            self.options[y][x][letter]=min(horizontal[y][x][letter], vertical[y][x][letter])
+                    for letter in self.options[y][x]:
+                        if letter not in frequencies:
+                            self.options[y][x][letter] = 0
+                        else:
+                            self.options[y][x][letter] = min(self.options[y][x][letter], frequencies[letter])
 
             #Calculate new weight
+            new_total_options = 0
             for y in range(self.height):
                 for x in range(self.width):
-                    new_weight = sum(self.options[y][x][letter] for letter in self.options[y][x])
+                    new_total_options += sum(self.options[y][x][letter] for letter in self.options[y][x])
             #check if there is a 0 weight
             if self.is_deadend():
                 break
             #print(old_weight, new_weight)
-            if new_weight >= old_weight:
+            if new_total_options >= old_total_options:
                 break
             else:
-                old_weight = new_weight
+                old_total_options = new_total_options
         
             
     def shannon_entropy(self, x, y) -> float:
@@ -129,8 +128,9 @@ class Wordmatrix(object):
         sum_of_weight_log_weights = 0
         for letter in self.options[y][x]:
             weight = self.options[y][x][letter]
-            sum_of_weights += weight
-            sum_of_weight_log_weights += weight * math.log(weight)
+            if weight > 0:
+                sum_of_weights += weight
+                sum_of_weight_log_weights += weight * math.log(weight)
 
         return math.log(sum_of_weights) - (sum_of_weight_log_weights / sum_of_weights)
 
@@ -149,10 +149,9 @@ class Wordmatrix(object):
     def is_deadend(self):
         for y in range(self.height):
             for x in range(self.width):
-                if len(self.options[y][x]) == 0:
+                if sum(self.options[y][x][letter] for letter in self.options[y][x]) == 0:
                     return True
         return False
-
     
     def define(self, x, y):
         total_weight = sum(self.options[y][x][letter] for letter in self.options[y][x])
@@ -207,35 +206,65 @@ class Wordmatrix(object):
             out += "   |"
             for x in range(self.width):
                 for letter in "abcdef":
-                    out += letter if letter in self.options[y][x] else " "
+                    if letter in self.options[y][x]:
+                        if self.options[y][x][letter] > 0:
+                            out += letter
+                        else:
+                            out += " "
+                    else:
+                        out += " "
                 out += "|"
             out += "\n"
 
             out += "   |"
             for x in range(self.width):
                 for letter in "ghijkl":
-                    out += letter if letter in self.options[y][x] else " "
+                    if letter in self.options[y][x]:
+                        if self.options[y][x][letter] > 0:
+                            out += letter
+                        else:
+                            out += " "
+                    else:
+                        out += " "
                 out += "|"
             out += "\n"
 
             out += " "+ str(y) +" |"
             for x in range(self.width):
                 for letter in "mnopqr":
-                    out += letter if letter in self.options[y][x] else " "
+                    if letter in self.options[y][x]:
+                        if self.options[y][x][letter] > 0:
+                            out += letter
+                        else:
+                            out += " "
+                    else:
+                        out += " "
                 out += "|"
             out += "\n"
 
             out += "   |"
             for x in range(self.width):
                 for letter in "stuvwx":
-                    out += letter if letter in self.options[y][x] else " "
+                    if letter in self.options[y][x]:
+                        if self.options[y][x][letter] > 0:
+                            out += letter
+                        else:
+                            out += " "
+                    else:
+                        out += " "
                 out += "|"
             out += "\n"
 
             out += "   |"
             for x in range(self.width):
                 for letter in "yz    ":
-                    out += letter if letter in self.options[y][x] else " "
+                    if letter in self.options[y][x]:
+                        if self.options[y][x][letter] > 0:
+                            out += letter
+                        else:
+                            out += " "
+                    else:
+                        out += " "
                 out += "|"
             out += "\n"
 
