@@ -41,14 +41,6 @@ class Wordmatrix(object):
     def get(self, x, y):
         return self.options[y][x]
 
-    def backup(self):
-        self.history.append(deepcopy(self.options))
-        return len(self.history)
-    
-    def restore(self):
-        self.options = self.history.pop()
-        return len(self.history)
-
     def add_blacklist(self, x, y, letter):
         self.blacklist[y][x].append(letter)
 
@@ -86,20 +78,28 @@ class Wordmatrix(object):
                         self.options[y][x][letter] = 0
                         #print("letter popped: ", x, ", ", y, ": ", letter)
             
+            #Stop updating if already deadend
+            if self.is_deadend():
+                break
+            
             #horizontal words
             for y in range(self.height):
                 for x, frequencies in enumerate(self.find_frequencies(self.get_row(y))):
                     for letter in self.options[y][x]:
-                        if letter not in frequencies:
+                        if letter not in frequencies or letter in self.blacklist[y][x]:
                             self.options[y][x][letter] = 0
                         else:
                             self.options[y][x][letter] = min(self.options[y][x][letter], frequencies[letter])
-
+            
+            #Stop updating if already deadend
+            if self.is_deadend():
+                break
+            
             #vertical words
             for x in range(self.width):
                 for y, frequencies in enumerate(self.find_frequencies(self.get_column(x))):
                     for letter in self.options[y][x]:
-                        if letter not in frequencies:
+                        if letter not in frequencies or letter in self.blacklist[y][x]:
                             self.options[y][x][letter] = 0
                         else:
                             self.options[y][x][letter] = min(self.options[y][x][letter], frequencies[letter])
@@ -109,10 +109,8 @@ class Wordmatrix(object):
             for y in range(self.height):
                 for x in range(self.width):
                     new_total_options += sum(self.options[y][x][letter] for letter in self.options[y][x])
-            #check if there is a 0 weight
-            if self.is_deadend():
-                break
-            #print(old_weight, new_weight)
+            
+            #Stop updating if no improvement could be reached
             if new_total_options >= old_total_options:
                 break
             else:
@@ -142,7 +140,7 @@ class Wordmatrix(object):
         return entropies
 
     def is_defined(self, x, y):
-        if len(self.options[y][x]) == 1:
+        if sum(self.options[y][x][letter] > 0 for letter in self.options[y][x]) == 1:
             return True
         return False
     
@@ -172,6 +170,14 @@ class Wordmatrix(object):
     
     def set(self, x, y, letter):
         self.options[y][x] = {letter : 1}
+    
+    def backup(self):
+        self.history.append(deepcopy(self.options))
+        return len(self.history)
+    
+    def restore(self):
+        self.options = self.history.pop()
+        return len(self.history)
 
     def print_defined(self):
         out = "   "
@@ -182,7 +188,7 @@ class Wordmatrix(object):
             out += " " + str(y) + " "
             for x in range(self.width):
                 if self.is_defined(x,y):
-                    out += " " + list(self.get(x,y).keys())[0] + " "
+                    out += " " + ''.join([letter for letter in  self.options[y][x] if  self.options[y][x][letter]>0]) + " "
                 else:
                     out += "   "
             out += "\n"
