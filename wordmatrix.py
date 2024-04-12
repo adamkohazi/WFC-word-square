@@ -2,7 +2,6 @@ import re
 import string
 import math
 import random
-from copy import deepcopy
 
 class Wordmatrix(object):
     """Class for keeping track of all information related to a wordmatrix board.
@@ -138,6 +137,31 @@ class Wordmatrix(object):
             for x in range(self.width):
                 entropies[y][x] = self.shannon_entropy(x, y)
         return entropies
+
+    def find_min_entropy(self, noise=None):
+        """Returns the co-ords of the location whose wavefunction has
+        the lowest entropy.
+        """
+        
+        min_entropy_coords = (0, 0)
+        min_entropy = 1000
+
+        for y in range(self.height):
+            for x in range(self.width):
+                if self.is_defined(x,y):
+                    continue
+
+                entropy = self.shannon_entropy(x,y)
+
+                # Add some noise to mix things up a little
+                if noise:
+                    entropy = entropy - (noise * random.random() / 1000)
+
+                if entropy < min_entropy:
+                    min_entropy = entropy
+                    min_entropy_coords = (x, y)
+
+        return min_entropy_coords
 
     def is_defined(self, x, y):
         if sum(self.options[y][x][letter] > 0 for letter in self.options[y][x]) == 1:
