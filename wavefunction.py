@@ -1,11 +1,15 @@
-import os
-import sys
+import random
+import history_tree
+from anytree import RenderTree
+
 class Wavefunction(object):
 
     def __init__(self, matrix):
         self.wordmatrix = matrix
         self.history = []
         self.wordmatrix.print_options()
+        self.root = history_tree.MoveNode(0, 0, '-', parent=None, children=None)
+        self.currentNode = self.root
 
     def run(self):
         while not self.wordmatrix.is_fully_defined():
@@ -19,7 +23,6 @@ class Wavefunction(object):
         """
         #Check if wordmatrix is possible
         if not self.wordmatrix.is_deadend():
-            #Backup wordmatrix
             self.wordmatrix.backup()
 
             #Find the co-ordinates of minimum entropy
@@ -30,6 +33,7 @@ class Wavefunction(object):
 
             #Take a note of the move
             self.history.append([x,y,letter])
+            self.currentNode = history_tree.MoveNode(x, y, letter, parent=self.currentNode)
             print("letter added: x=", x, ", y=", y, ": ", letter)
             print("history length: ", len(self.wordmatrix.history))
 
@@ -38,15 +42,17 @@ class Wavefunction(object):
         
         #If it is a deadend, backtrack
         else:
+            self.currentNode.deadEnd = True
             if len(self.history) == 0:
                 print("No more options")
                 print(self.wordmatrix.blacklist)
                 quit()
             self.wordmatrix.restore()
+            self.currentNode = self.currentNode.parent
             
             #Learn from the mistake
             x, y, letter = self.history.pop()
-            #self.wordmatrix.add_blacklist(x, y, letter)
+            self.wordmatrix.add_blacklist(x, y, letter)
             print("letter removed: ", x, ", ", y, ": ", letter)
             print("history length: ", len(self.wordmatrix.history))
 
@@ -55,6 +61,9 @@ class Wavefunction(object):
         
         #Print results
         #self.wordmatrix.print_defined()
+        for pre, _, node in RenderTree(self.root):
+            treestr = u"%s%s%s%s" % (pre, node.x, node.y, node.letter)
+            print(treestr.ljust(8))
         self.wordmatrix.print_options()
 
 
@@ -73,7 +82,7 @@ class Wavefunction(object):
 
                 entropy = self.wordmatrix.shannon_entropy(x,y)
                 # Add some noise to mix things up a little
-                # entropy = entropy - (random.random() / 1000)
+                entropy = entropy - (random.random() / 1000)
 
                 if entropy < min_entropy:
                     min_entropy = entropy
