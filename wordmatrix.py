@@ -2,6 +2,11 @@ import re
 import string
 import math
 import random
+random.seed(1234)
+
+
+#letterset = 'aábcdeéfghiíjklmnoóöőpqrstuúüűvwxyz'
+letterset = string.ascii_lowercase
 
 class Wordmatrix(object):
     """Class for keeping track of all information related to a wordmatrix board.
@@ -17,7 +22,7 @@ class Wordmatrix(object):
         self.dictionary = dictionary
 
         # Initially every letter is an option for every field
-        self.options = [[dict.fromkeys(string.ascii_lowercase, 9999) for w in range(self.width)] for h in range(self.height)]
+        self.options = [[dict.fromkeys(letterset, 9999) for w in range(self.width)] for h in range(self.height)]
         self.blacklist = [[[] for w in range(self.width)] for h in range(self.height)]
         #self.possibilities = [[[] for w in range(self.width)] for h in range(self.height)]
         self.history = []
@@ -43,6 +48,7 @@ class Wordmatrix(object):
     def add_blacklist(self, x, y, letter):
         self.blacklist[y][x].append(letter)
 
+    #@profile
     def find_frequencies(self, elements):
         frequencies = [{} for element in elements]
 
@@ -51,7 +57,6 @@ class Wordmatrix(object):
         for element in elements:
             regex += "[" + ''.join([letter for letter in element if element[letter]>0]) + "]"
         regex += "$"
-        #print(regex)
         r = re.compile(regex, re.UNICODE)
 
         # Find letter options/counts based on matching words
@@ -60,9 +65,10 @@ class Wordmatrix(object):
                 if letter not in frequencies[position]:
                     frequencies[position][letter] = 0
                 frequencies[position][letter] += 1
-        
+
         return frequencies
 
+    #@profile
     def update_possibilities(self):
         old_total_options = 0
         for y in range(self.height):
@@ -194,14 +200,6 @@ class Wordmatrix(object):
     
     def set(self, x, y, letter):
         self.options[y][x] = {letter : 1}
-    
-    def backup(self):
-        self.history.append(deepcopy(self.options))
-        return len(self.history)
-    
-    def restore(self):
-        self.options = self.history.pop()
-        return len(self.history)
 
     def print_defined(self):
         out = "   "
