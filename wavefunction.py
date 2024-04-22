@@ -41,7 +41,7 @@ class Wavefunction(object):
             # Revert wrong move
             self.currentNode = self.currentNode.parent
             # Learn from the mistake
-            self.currentNode.wordmatrix.add_blacklist(x, y, letter)
+            self.currentNode.wordmatrix.add_blacklist((x, y), letter)
 
         else:
             # New move
@@ -50,7 +50,7 @@ class Wavefunction(object):
             x, y = self.currentNode.wordmatrix.find_min_entropy()
             # Collapse the wavefunction at these coordinates
             new_matrix = deepcopy(self.currentNode.wordmatrix) #TODO: optimize
-            letter = new_matrix.define(x, y)
+            letter = new_matrix.define((x, y))
             # Make a note of move
             self.currentNode = history_tree.MoveNode(x, y, letter, new_matrix, parent=self.currentNode)
             print("letter added:   (", x, ",", y, "): ", letter," - ",self.treelevel)

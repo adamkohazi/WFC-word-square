@@ -1,4 +1,4 @@
-from anytree import NodeMixin, RenderTree
+from anytree import NodeMixin
 
 class Move(object):  # Represents a single move
     def __init__(self, x, y, letter, matrix):

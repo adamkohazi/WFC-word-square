@@ -1,4 +1,3 @@
-dictionary_EN.txt
-dictionary_HU.txt
-google-10000-english.txt
+*.txt
+dict_converter.py
 __pycache__/
