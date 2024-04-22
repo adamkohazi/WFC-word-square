@@ -1,51 +1,172 @@
 import re
-import string
 import math
 import random
-random.seed(1234)
 
+#random.seed(1234) # Used for testing
 
-#letterset = 'aábcdeéfghiíjklmnoóöőpqrstuúüűvwxyz'
-letterset = string.ascii_lowercase
-
-class Wordmatrix(object):
-    """Class for keeping track of all information related to a wordmatrix board.
+class Crossword(object):
+    """Class for keeping track of and interacting with a rectangular crossword grid.
 
     Attributes:
-        hand: Counter class keeping track of letters available in hand.
-        score: Integer value keeping track of the current score.
-        isBot: Boolean indicating if the player is a bot or not.
+        width (int): Width of the rectangular crossword grid.
+        height (int): Integer height of the rectangular crossword grid.
+        dictionary (dict): Valid words that can be used to fill the grid.
+        options (2D list of dicts): Valid letters for each cell of the grid.
+        blacklist (2D list of lists): Letters that result in an unsolvable state for each cell of the grid.
     """
 
-    def __init__(self, size, dictionary):
+    def __init__(self, size, dictionary, letterset):
+        """Initializes a new crossword instance.
+
+        Arguments:
+            size (tuple): Width and height of the grid
+            dictionary (dict): Valid words that can be used to fill the grid.
+            letterset (string): All valid letters concatenated.
+        """
         self.width, self.height = size
         self.dictionary = dictionary
 
         # Initially every letter is an option for every field
         self.options = [[dict.fromkeys(letterset, 9999) for w in range(self.width)] for h in range(self.height)]
+        # Start with a clean blacklist
         self.blacklist = [[[] for w in range(self.width)] for h in range(self.height)]
-        #self.possibilities = [[[] for w in range(self.width)] for h in range(self.height)]
-        self.history = []
-    
+
+        # Perform an initial update based on constraints from dictionary
         self.update_possibilities()
     
-    def get_row(self, row):
-        return self.options[row]
+    def find_horizontal_word_letters(self, coords):
+        """Finds the coordinates for each letter of a horizontal word.
 
-    def get_column(self, column):
-        return [row[column] for row in self.options]
+        Arguments:
+            coords (tuple): Coorinates of the cell from which the search should start.
+
+        Returns:
+            letterCoords (list of tuples): List of letter coordinates from left to right.
+        """
+        if self.getOptions(coords)=={"-" : 1}:
+            return []
+        
+        x, y = coords
+
+        xStart = x
+        while (xStart > 0) and (self.getOptions((xStart-1, y)) != {"-" : 1}):
+            xStart -= 1
+        
+        xEnd = x
+        while (xEnd < self.width) and (self.getOptions((xEnd, y)) != {"-" : 1}):
+            xEnd += 1
+
+        letterCoordinates = []
+        for x in range(xStart, xEnd):
+            letterCoordinates.append((x, y))
+        
+        return letterCoordinates
+
+    def find_vertical_word_letters(self, coords):
+        """Finds the coordinates for each letter of a vertical word.
+        
+        Arguments:
+            coords (tuple): Coorinates of the cell from which the search should start.
+
+        Returns:
+            letterCoords (list of tuples): List of letter coordinates from top to bottom.
+        """
+        if self.getOptions(coords)=={"-" : 1}:
+            return []
+        
+        x, y = coords
+
+        yStart = y
+        while (yStart > 0) and (self.getOptions((x, yStart-1)) != {"-" : 1}):
+            yStart -= 1
+        
+        yEnd = y
+        while (yEnd < self.height) and (self.getOptions((x, yEnd)) != {"-" : 1}):
+            yEnd += 1
+
+        letterCoordinates = []
+        for y in range(yStart, yEnd):
+            letterCoordinates.append((x, y))
+        
+        return letterCoordinates
     
-    def set_row(self, row, elements):
-        self.options[row] = elements
+    def getRow(self, y):
+        """Lists valid letters for each cell of a row.
+        
+        Arguments:
+            y (int): Coordinate of the row to check.
 
-    def set_column(self, column, elements):
-        for index in len(self.options):
-            self.options[index][column]=elements[index]
+        Returns:
+            (list of dicts) Valid letters for each cell of the row.
+        """
+        return self.options[y]
 
-    def get(self, x, y):
+    def getColumn(self, x):
+        """Lists valid letters for each cell of a column.
+        
+        Arguments:
+            x (int): Coordinate of the column to check.
+
+        Returns:
+            (list of dicts): Valid letters for each cell of the column.
+        """
+        return [row[x] for row in self.options]
+    
+    def setRow(self, y, options):
+        """Sets valid letters for each cell of a row.
+        
+        Arguments:
+            y (int): Coordinate of the row to set.
+            options (list of dicts): Valid letters for each cell.
+        """
+        self.options[y] = options
+
+    def setColumn(self, x, options):
+        """Sets valid letters for each cell of a column.
+        
+        Arguments:
+            x (int): Coordinate of the column to set.
+            options (list of dicts): Valid letters for each cell of the column.
+        """
+        for y in len(self.options):
+            self.options[y][x]=options[y]
+
+    def getOptions(self, coords):
+        """Lists valid letters for a single cell.
+        
+        Arguments:
+            coords (tuple): Coorinates of the cell to check.
+
+        Returns:
+            (dict): Valid letters for the cell.
+        """
+        x, y = coords
         return self.options[y][x]
+    
+    def setOptions(self, letterCoords, options):
+        """Sets valid letters cells with given coordinates.
+        
+        Arguments:
+            letterCoords (list of tuples): List of letter coordinates to set.
+            options (list of dicts): Valid letters for each cell.
 
-    def add_blacklist(self, x, y, letter):
+        Returns:
+            (dict): Valid letters for the cell.
+        """
+        for position, coords in enumerate(letterCoords):
+            x, y = coords
+            self.options[y][x] = options[position]
+    
+    def setLetterOption(self, coords, letter, count):
+        x, y = coords
+        self.options[y][x][letter] = count
+    
+    def getBlacklist(self, coords):
+        x, y = coords
+        return self.blacklist[y][x]
+
+    def add_blacklist(self, coords, letter):
+        x, y = coords
         self.blacklist[y][x].append(letter)
 
     #@profile
@@ -67,13 +188,27 @@ class Wordmatrix(object):
                 frequencies[position][letter] += 1
 
         return frequencies
+    
+    def updateWord(self, letterCoords):
+        wordOptions = []
+        for coords in letterCoords:
+            wordOptions.append(self.getOptions(coords))
+            
+        for position, frequencies in enumerate(self.find_frequencies(wordOptions)):
+            coords = letterCoords[position]
+            for letter in self.getOptions(coords):
+                if letter not in frequencies or letter in self.getBlacklist(coords):
+                    self.setLetterOption(coords, letter, 0)
+                else:
+                    self.setLetterOption(coords, letter, min(self.getOptions(coords)[letter], frequencies[letter]))
+    
 
     #@profile
     def update_possibilities(self):
         old_total_options = 0
         for y in range(self.height):
             for x in range(self.width):
-                old_total_options += sum(self.options[y][x][letter] for letter in self.options[y][x])
+                old_total_options += sum(self.getOptions((x, y))[letter] for letter in self.getOptions((x, y)))
         
         while(True):
             #Remove blacklisted letters:
@@ -87,33 +222,61 @@ class Wordmatrix(object):
             if self.is_deadend():
                 break
             
-            #horizontal words
-            for y in range(self.height):
-                for x, frequencies in enumerate(self.find_frequencies(self.get_row(y))):
-                    for letter in self.options[y][x]:
-                        if letter not in frequencies or letter in self.blacklist[y][x]:
-                            self.options[y][x][letter] = 0
+            if(False):#old
+                #horizontal words
+                for y in range(self.height):
+                    for x, frequencies in enumerate(self.find_frequencies(self.getRow(y))):
+                        for letter in self.getOptions((x, y)):
+                            if letter not in frequencies or letter in self.blacklist[y][x]:
+                                self.options[y][x][letter] = 0
+                            else:
+                                self.options[y][x][letter] = min(self.getOptions((x, y))[letter], frequencies[letter])
+                
+                #Stop updating if already deadend
+                if self.is_deadend():
+                    break
+                
+                #vertical words
+                for x in range(self.width):
+                    for y, frequencies in enumerate(self.find_frequencies(self.getColumn(x))):
+                        for letter in self.getOptions((x, y)):
+                            if letter not in frequencies or letter in self.blacklist[y][x]:
+                                self.options[y][x][letter] = 0
+                            else:
+                                self.options[y][x][letter] = min(self.getOptions((x, y))[letter], frequencies[letter])
+            else:#new
+                horizontalUpdated = [[False for w in range(self.width)] for h in range(self.height)]
+                verticalUpdated = [[False for w in range(self.width)] for h in range(self.height)]
+                for y in range(self.height):
+                    for x in range(self.width):
+                        if self.is_deadend():
+                            break
+                        coords = (x, y)
+                        #print(coords)
+                        if self.getOptions(coords) == {"-" : 1}:
+                            next
                         else:
-                            self.options[y][x][letter] = min(self.options[y][x][letter], frequencies[letter])
-            
-            #Stop updating if already deadend
-            if self.is_deadend():
-                break
-            
-            #vertical words
-            for x in range(self.width):
-                for y, frequencies in enumerate(self.find_frequencies(self.get_column(x))):
-                    for letter in self.options[y][x]:
-                        if letter not in frequencies or letter in self.blacklist[y][x]:
-                            self.options[y][x][letter] = 0
-                        else:
-                            self.options[y][x][letter] = min(self.options[y][x][letter], frequencies[letter])
+                            if horizontalUpdated[y][x] != True:
+                                wordCoords = self.find_horizontal_word_letters(coords)
+                                #print("horizontal: ", wordCoords)
+                                self.updateWord(wordCoords)
+                                for x1, y1 in wordCoords:
+                                    horizontalUpdated[y1][x1] = True
+                            if self.is_deadend():
+                                break
+                            if verticalUpdated[y][x] != True:
+                                wordCoords = self.find_vertical_word_letters(coords)
+                                #print("vertical: ", wordCoords)
+                                self.updateWord(wordCoords)
+                                for x1, y1 in wordCoords:
+                                    verticalUpdated[y1][x1] = True
+                        
 
             #Calculate new weight
             new_total_options = 0
             for y in range(self.height):
                 for x in range(self.width):
-                    new_total_options += sum(self.options[y][x][letter] for letter in self.options[y][x])
+                    new_total_options += sum(self.getOptions((x, y))[letter] for letter in self.getOptions((x, y)))
             
             #Stop updating if no improvement could be reached
             if new_total_options >= old_total_options:
@@ -122,15 +285,15 @@ class Wordmatrix(object):
                 old_total_options = new_total_options
         
             
-    def shannon_entropy(self, x, y) -> float:
+    def shannon_entropy(self, coords) -> float:
         """Calculates the Shannon Entropy of the wavefunction at given
         coordinates.
         """
-
+        x, y = coords
         sum_of_weights = 0
         sum_of_weight_log_weights = 0
-        for letter in self.options[y][x]:
-            weight = self.options[y][x][letter]
+        for letter in self.getOptions((x, y)):
+            weight = self.getOptions((x, y))[letter]
             if weight > 0:
                 sum_of_weights += weight
                 sum_of_weight_log_weights += weight * math.log(weight)
@@ -154,10 +317,10 @@ class Wordmatrix(object):
 
         for y in range(self.height):
             for x in range(self.width):
-                if self.is_defined(x,y):
+                if self.is_defined((x,y)):
                     continue
 
-                entropy = self.shannon_entropy(x,y)
+                entropy = self.shannon_entropy((x,y))
 
                 # Add some noise to mix things up a little
                 if noise:
@@ -169,36 +332,40 @@ class Wordmatrix(object):
 
         return min_entropy_coords
 
-    def is_defined(self, x, y):
-        if sum(self.options[y][x][letter] > 0 for letter in self.options[y][x]) == 1:
+    def is_defined(self, coords):
+        x, y = coords
+        if sum(self.getOptions((x, y))[letter] > 0 for letter in self.getOptions((x, y))) == 1:
             return True
         return False
     
     def is_deadend(self):
         for y in range(self.height):
             for x in range(self.width):
-                if sum(self.options[y][x][letter] for letter in self.options[y][x]) == 0:
+                if sum(self.getOptions((x, y))[letter] for letter in self.getOptions((x, y))) == 0:
+                    #print("Deadend at (",x,",",y,")")
                     return True
         return False
     
-    def define(self, x, y):
-        total_weight = sum(self.options[y][x][letter] for letter in self.options[y][x])
+    def define(self, coords):
+        x, y = coords
+        total_weight = sum(self.getOptions((x, y))[letter] for letter in self.getOptions((x, y)))
         rnd = random.random() * total_weight
 
-        for letter in self.options[y][x]:
-            rnd -= self.options[y][x][letter]
+        for letter in self.getOptions((x, y)):
+            rnd -= self.getOptions((x, y))[letter]
             if rnd < 0:
-                self.set(x, y, letter)
+                self.set((x, y), letter)
                 return letter
     
     def is_fully_defined(self):
         for y in range(self.height):
             for x in range(self.width):
-                if not self.is_defined(x,y):
+                if not self.is_defined((x,y)):
                     return False
         return True
     
-    def set(self, x, y, letter):
+    def set(self, coords, letter):
+        x, y = coords
         self.options[y][x] = {letter : 1}
 
     def print_defined(self):
@@ -209,8 +376,8 @@ class Wordmatrix(object):
         for y in range(self.height):
             out += " " + str(y) + " "
             for x in range(self.width):
-                if self.is_defined(x,y):
-                    out += " " + ''.join([letter for letter in  self.options[y][x] if  self.options[y][x][letter]>0]) + " "
+                if self.is_defined((x,y)):
+                    out += " " + ''.join([letter for letter in  self.getOptions((x, y)) if  self.getOptions((x, y))[letter]>0]) + " "
                 else:
                     out += "   "
             out += "\n"
@@ -234,8 +401,8 @@ class Wordmatrix(object):
             out += "   |"
             for x in range(self.width):
                 for letter in "abcdef":
-                    if letter in self.options[y][x]:
-                        if self.options[y][x][letter] > 0:
+                    if letter in self.getOptions((x, y)):
+                        if self.getOptions((x, y))[letter] > 0:
                             out += letter
                         else:
                             out += " "
@@ -247,8 +414,8 @@ class Wordmatrix(object):
             out += "   |"
             for x in range(self.width):
                 for letter in "ghijkl":
-                    if letter in self.options[y][x]:
-                        if self.options[y][x][letter] > 0:
+                    if letter in self.getOptions((x, y)):
+                        if self.getOptions((x, y))[letter] > 0:
                             out += letter
                         else:
                             out += " "
@@ -260,8 +427,8 @@ class Wordmatrix(object):
             out += " "+ str(y) +" |"
             for x in range(self.width):
                 for letter in "mnopqr":
-                    if letter in self.options[y][x]:
-                        if self.options[y][x][letter] > 0:
+                    if letter in self.getOptions((x, y)):
+                        if self.getOptions((x, y))[letter] > 0:
                             out += letter
                         else:
                             out += " "
@@ -273,8 +440,8 @@ class Wordmatrix(object):
             out += "   |"
             for x in range(self.width):
                 for letter in "stuvwx":
-                    if letter in self.options[y][x]:
-                        if self.options[y][x][letter] > 0:
+                    if letter in self.getOptions((x, y)):
+                        if self.getOptions((x, y))[letter] > 0:
                             out += letter
                         else:
                             out += " "
@@ -285,9 +452,9 @@ class Wordmatrix(object):
 
             out += "   |"
             for x in range(self.width):
-                for letter in "yz    ":
-                    if letter in self.options[y][x]:
-                        if self.options[y][x][letter] > 0:
+                for letter in "yz-   ":
+                    if letter in self.getOptions((x, y)):
+                        if self.getOptions((x, y))[letter] > 0:
                             out += letter
                         else:
                             out += " "

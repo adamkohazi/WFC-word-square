@@ -1,7 +1,8 @@
 import wordmatrix
 import wavefunction
+import string
 
-size = [7,7]
+size = [7,5]
 
 def optimize_dictionary (lengths, dict):
     opt_dict = []
@@ -12,16 +13,35 @@ def optimize_dictionary (lengths, dict):
     return opt_dict
 
 def get_dictionary_word_list(filename):
-    with open(filename, encoding="utf_8") as f:
+    with open(filename, encoding="iso-8859-2") as f:
         # Return the split results, which is all the words in the file.
         return f.read().split()
 
-# Loading words to a dictionary for generation
-dict = get_dictionary_word_list("dictionary_HU.txt")
-#dict = get_dictionary_word_list("google-10000-english.txt")
-dict = optimize_dictionary(size, dict)
+def findLetterset(dictionary):
+    letters = set()
+    for word in dictionary:
+        for letter in word:
+            letters.add(letter)
+    print(''.join(letters))
+    return ''.join(letters)
 
-table = wordmatrix.Wordmatrix(size, dict)
+# Loading words to a dictionary for generation
+dict = get_dictionary_word_list("HU_100k.txt")
+#dict = optimize_dictionary(size, dict)
+
+lettersetHU = 'aábcdeéfghiíjklmnoóöőpqrstuúüűvwxyz'
+lettersetEN = string.ascii_lowercase
+
+table = wordmatrix.Crossword(size, dict, lettersetHU)
 wfc = wavefunction.Wavefunction(table)
 
+
+print("inserting black squares")
+blankLocations=[(3,2 )]
+
+for coords in blankLocations:
+    wfc.root.wordmatrix.setOptions([coords], [{'-':1}])
+wfc.currentNode.wordmatrix.update_possibilities()
+
 wfc.run()
+
