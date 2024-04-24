@@ -2,14 +2,34 @@ import wordmatrix
 import wavefunction
 import string
 
-size = [7,5]
+# For testing purposes
+from random import seed
+seed(1234)
 
-def optimize_dictionary (lengths, dict):
+size = [7,5]
+lettersetHU = 'aábcdeéfghiíjklmnoóöőpqrstuúüűvwxyz'
+lettersetEN = string.ascii_lowercase
+
+def optimize_dictionary (dict, lengths, letterset):
     opt_dict = []
     for word in dict:
-        if len(word) in lengths:
-            if word.isalpha():
-                opt_dict.append(word.lower())
+        valid = True
+        # Check 1: Contains only alpha chars
+        if not word.isalpha():
+            valid = False
+
+        # Check 2: Contains only defined letters
+        for letter in word:
+            if letter not in letterset:
+                valid = False
+                break
+
+        # Check 3: No longer than max length
+        if len(word) > max(lengths):
+            valid = False
+
+        if valid:
+            opt_dict.append(word.lower())
     return opt_dict
 
 def get_dictionary_word_list(filename):
@@ -26,11 +46,8 @@ def findLetterset(dictionary):
     return ''.join(letters)
 
 # Loading words to a dictionary for generation
-dict = get_dictionary_word_list("HU_100k.txt")
-#dict = optimize_dictionary(size, dict)
-
-lettersetHU = 'aábcdeéfghiíjklmnoóöőpqrstuúüűvwxyz'
-lettersetEN = string.ascii_lowercase
+dict = get_dictionary_word_list("dictionary_EN.txt")
+#dict = optimize_dictionary(dict, size, lettersetHU)
 
 table = wordmatrix.Crossword(size, dict, lettersetHU)
 wfc = wavefunction.Wavefunction(table)
