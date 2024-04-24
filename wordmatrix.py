@@ -144,38 +144,67 @@ class Crossword(object):
         return self.options[y][x]
     
     def setOptions(self, letterCoords, options):
-        """Sets valid letters cells with given coordinates.
+        """Sets valid letters for multiple cells with given coordinates.
         
         Arguments:
             letterCoords (list of tuples): List of letter coordinates to set.
             options (list of dicts): Valid letters for each cell.
-
-        Returns:
-            (dict): Valid letters for the cell.
         """
         for position, coords in enumerate(letterCoords):
             x, y = coords
             self.options[y][x] = options[position]
     
-    def setLetterOption(self, coords, letter, count):
+    def setLetterCount(self, coords, letter, count):
+        """Sets the count (or validity if 0) of a single letter of cell for given coordinates.
+        
+        Arguments:
+            coords (tuple): Coorinates of the cell to set.
+            letter (char): Letter to set.
+            count (int): Count of given letter. If 0, letter is considered invalid for this position.
+        """
         x, y = coords
         self.options[y][x][letter] = count
     
     def getBlacklist(self, coords):
+        """Lists blacklisted letters for a single cell.
+        
+        Arguments:
+            coords (tuple): Coorinates of the cell to check.
+
+        Returns:
+            (list): Blacklisted letters for the cell.
+        """
         x, y = coords
         return self.blacklist[y][x]
 
     def add_blacklist(self, coords, letter):
+        """Adds letter to blacklist for a single cell.
+        
+        Arguments:
+            coords (tuple): Coorinates of the cell to check.
+            letter (char): Letter to blacklist.
+
+        """
         x, y = coords
         self.blacklist[y][x].append(letter)
 
     #@profile
-    def find_frequencies(self, elements):
-        frequencies = [{} for element in elements]
+    def find_frequencies(self, options):
+        """Finds the frequency of letters for each position of a word based on the active dictionary. The dictionary is prefiltered by a list of allowed letters (options).
+        
+        Arguments:
+            options (list of dicts): Valid letters for each position.
+
+        Returns:
+            frequencies (list of dicts): Letter frequencies for each position.
+        """
+        
+        #TODO: Running this function takes ~95% of the runtime. Performance could be greatly increased by making this lookup more efficient.
+        frequencies = [{} for option in options]
 
         # Convert elements to regular expression:
         regex = ""
-        for element in elements:
+        for element in options:
             regex += "[" + ''.join([letter for letter in element if element[letter]>0]) + "]"
         regex += "$"
         r = re.compile(regex, re.UNICODE)
@@ -189,186 +218,217 @@ class Crossword(object):
 
         return frequencies
     
-    def updateWord(self, letterCoords):
+    def updateWordOptions(self, letterCoords):
+        """Updates the valid letter options for given cells, by performing a lookup using the current letter options, and removing those that don't appear in the results.
+        
+        Arguments:
+            letterCoords (list of tuples): List of coordinates to set.
+        """
         wordOptions = []
         for coords in letterCoords:
             wordOptions.append(self.getOptions(coords))
-            
+        
+        #TODO: Running the find frequencies function takes ~95% of the runtime. Performance could be greatly increased by performing less lookups.
         for position, frequencies in enumerate(self.find_frequencies(wordOptions)):
             coords = letterCoords[position]
             for letter in self.getOptions(coords):
                 if letter not in frequencies or letter in self.getBlacklist(coords):
-                    self.setLetterOption(coords, letter, 0)
+                    # Invalidate letters that are blacklisted or don't appear in words.
+                    self.setLetterCount(coords, letter, 0)
                 else:
-                    self.setLetterOption(coords, letter, min(self.getOptions(coords)[letter], frequencies[letter]))
-    
+                    # Take the minimum of the existing and new letter weights.
+                    # This is done so that if a letter is very common for horizontal words but rare for vertical words, it will be considered rare.
+                    self.setLetterCount(coords, letter, min(self.getOptions(coords)[letter], frequencies[letter]))
 
     #@profile
     def update_possibilities(self):
+        """Iteratively updates letter options, until a minimum subset is reached. After this update, the crossword is either solvable and all invalid letters are eliminated or a deadend is confirmed.
+        """
         old_total_options = 0
         for y in range(self.height):
             for x in range(self.width):
                 old_total_options += sum(self.getOptions((x, y))[letter] for letter in self.getOptions((x, y)))
         
+        # Do this while the total number of valid letters are decreasing, hence the crossword is more defined
         while(True):
-            #Remove blacklisted letters:
+            # Remove blacklisted letters:
             for y in range(self.height):
                 for x in range(self.width):
                     for letter in self.blacklist[y][x]:
                         self.options[y][x][letter] = 0
-                        #print("letter popped: ", x, ", ", y, ": ", letter)
             
-            #Stop updating if already deadend
-            if self.is_deadend():
+            # Stop updating if already deadend
+            if self.isDeadend():
                 break
             
-            if(False):#old
-                #horizontal words
-                for y in range(self.height):
-                    for x, frequencies in enumerate(self.find_frequencies(self.getRow(y))):
-                        for letter in self.getOptions((x, y)):
-                            if letter not in frequencies or letter in self.blacklist[y][x]:
-                                self.options[y][x][letter] = 0
-                            else:
-                                self.options[y][x][letter] = min(self.getOptions((x, y))[letter], frequencies[letter])
-                
-                #Stop updating if already deadend
-                if self.is_deadend():
-                    break
-                
-                #vertical words
-                for x in range(self.width):
-                    for y, frequencies in enumerate(self.find_frequencies(self.getColumn(x))):
-                        for letter in self.getOptions((x, y)):
-                            if letter not in frequencies or letter in self.blacklist[y][x]:
-                                self.options[y][x][letter] = 0
-                            else:
-                                self.options[y][x][letter] = min(self.getOptions((x, y))[letter], frequencies[letter])
-            else:#new
-                horizontalUpdated = [[False for w in range(self.width)] for h in range(self.height)]
-                verticalUpdated = [[False for w in range(self.width)] for h in range(self.height)]
-                for y in range(self.height):
-                    for x in range(self.width):
-                        if self.is_deadend():
-                            break
-                        coords = (x, y)
-                        #print(coords)
-                        if self.getOptions(coords) == {"-" : 1}:
-                            next
-                        else:
-                            if horizontalUpdated[y][x] != True:
-                                wordCoords = self.find_horizontal_word_letters(coords)
-                                #print("horizontal: ", wordCoords)
-                                self.updateWord(wordCoords)
-                                for x1, y1 in wordCoords:
-                                    horizontalUpdated[y1][x1] = True
-                            if self.is_deadend():
-                                break
-                            if verticalUpdated[y][x] != True:
-                                wordCoords = self.find_vertical_word_letters(coords)
-                                #print("vertical: ", wordCoords)
-                                self.updateWord(wordCoords)
-                                for x1, y1 in wordCoords:
-                                    verticalUpdated[y1][x1] = True
-                        
+            # Keep track of what has been updated, to avoid updating a word for every letter
+            horizontalUpdated = [[False for w in range(self.width)] for h in range(self.height)]
+            verticalUpdated = [[False for w in range(self.width)] for h in range(self.height)]
 
-            #Calculate new weight
+            # Go through every cell
+            for y in range(self.height):
+
+                # Stop updating if already deadend
+                if self.isDeadend():
+                    break
+
+                for x in range(self.width):
+                    coords = (x, y)
+
+                    # Skip cell if it's a blank
+                    if self.getOptions(coords) == {"-" : 1}:
+                        next
+                    
+                    # If horizontal word of the cell was not yet updated, update it
+                    if horizontalUpdated[y][x] != True:
+                        wordCoords = self.find_horizontal_word_letters(coords)
+                        self.updateWordOptions(wordCoords)
+                        # Note that the word was updated
+                        for x1, y1 in wordCoords:
+                            horizontalUpdated[y1][x1] = True
+                    
+                    # Stop updating if already deadend
+                    if self.isDeadend():
+                        break
+
+                    # If vertical word of the cell was not yet updated, update it
+                    if verticalUpdated[y][x] != True:
+                        wordCoords = self.find_vertical_word_letters(coords)
+                        self.updateWordOptions(wordCoords)
+                        # Note that the word was updated
+                        for x1, y1 in wordCoords:
+                            verticalUpdated[y1][x1] = True
+                        
+            # Calculate new weight
             new_total_options = 0
             for y in range(self.height):
                 for x in range(self.width):
                     new_total_options += sum(self.getOptions((x, y))[letter] for letter in self.getOptions((x, y)))
             
-            #Stop updating if no improvement could be reached
-            if new_total_options >= old_total_options:
+            # Stop updating if no large improvement could be reached
+            if new_total_options >= old_total_options * 1.0:
                 break
             else:
                 old_total_options = new_total_options
         
             
-    def shannon_entropy(self, coords) -> float:
-        """Calculates the Shannon Entropy of the wavefunction at given
-        coordinates.
+    def shannonEntropy(self, coords) -> float:
+        """Calculates the Shannon entropy ("uncertainty") for a cell with given coordinates. Higher number means higher uncertainty.
+
+        Arguments:
+            coords (tuple): Coorinates of the cell to check.
+
+        Returns:
+            entropy (float): Entropy of the cell (in bits).
         """
-        x, y = coords
-        sum_of_weights = 0
-        sum_of_weight_log_weights = 0
-        for letter in self.getOptions((x, y)):
-            weight = self.getOptions((x, y))[letter]
+        entropy = 0
+        sumOfWeights = sum(self.getOptions(coords)[letter] for letter in self.getOptions(coords))
+        for letter in self.getOptions(coords):
+            weight = self.getOptions(coords)[letter]
+            letterProbability = weight / sumOfWeights
             if weight > 0:
-                sum_of_weights += weight
-                sum_of_weight_log_weights += weight * math.log(weight)
+                entropy -= letterProbability * math.log(letterProbability)
+        return entropy
 
-        return math.log(sum_of_weights) - (sum_of_weight_log_weights / sum_of_weights)
+    def findMinEntropy(self, noise=None):
+        """Finds the coordinates with the lowest entropy (e.g. the "most likely" letter)
 
-    def entropies(self):
-        entropies = [[float]*self.width for i in range(self.height)]
-        for y in range(self.height):
-            for x in range(self.width):
-                entropies[y][x] = self.shannon_entropy(x, y)
-        return entropies
+        Arguments:
+            noise (float) - optional: Level of noise mix into the entropies. (Default: No noise is present)
 
-    def find_min_entropy(self, noise=None):
-        """Returns the co-ords of the location whose wavefunction has
-        the lowest entropy.
+        Returns:
+            minEntropyCoords (tuple): Coorinates of the cell with the minimum entropy.
         """
         
-        min_entropy_coords = (0, 0)
-        min_entropy = 1000
+        minEntropyCoords = (0, 0)
+        minEntropy = 1000
 
         for y in range(self.height):
             for x in range(self.width):
-                if self.is_defined((x,y)):
+                # Skip the cell if it is already defined.
+                if self.isDefined((x,y)):
                     continue
 
-                entropy = self.shannon_entropy((x,y))
+                entropy = self.shannonEntropy((x,y))
 
                 # Add some noise to mix things up a little
                 if noise:
                     entropy = entropy - (noise * random.random() / 1000)
 
-                if entropy < min_entropy:
-                    min_entropy = entropy
-                    min_entropy_coords = (x, y)
+                if entropy < minEntropy:
+                    minEntropy = entropy
+                    minEntropyCoords = (x, y)
 
-        return min_entropy_coords
+        return minEntropyCoords
 
-    def is_defined(self, coords):
-        x, y = coords
-        if sum(self.getOptions((x, y))[letter] > 0 for letter in self.getOptions((x, y))) == 1:
+    def isDefined(self, coords):
+        """Checks if there's a single letter defined for a cell.
+
+        Arguments:
+            coords (tuple): Coorinates of the cell to check.
+
+        Returns:
+            (bool): True if single letter is defined, False otherwise.
+        """
+        if sum(self.getOptions(coords)[letter] > 0 for letter in self.getOptions(coords)) == 1:
             return True
         return False
     
-    def is_deadend(self):
+    def isFullyDefined(self):
+        """Checks if there's a single letter defined for every cell.
+
+        Returns:
+            (bool): True if single letter is defined for every cell, False otherwise.
+        """
+        for y in range(self.height):
+            for x in range(self.width):
+                if not self.isDefined((x,y)):
+                    return False
+        return True
+    
+    def isDeadend(self):
+        """Checks if crossword is a deadend, meaning there's at least one cell with no valid options.
+
+        Returns:
+            (bool): True if crossword is deadend, False otherwise.
+        """
         for y in range(self.height):
             for x in range(self.width):
                 if sum(self.getOptions((x, y))[letter] for letter in self.getOptions((x, y))) == 0:
-                    #print("Deadend at (",x,",",y,")")
                     return True
         return False
     
     def define(self, coords):
-        x, y = coords
-        total_weight = sum(self.getOptions((x, y))[letter] for letter in self.getOptions((x, y)))
+        """Defines a single letter for a cell with multiple options, weighted by letter frequencies for valid words.
+
+        Arguments:
+            coords (tuple): Coorinates of the cell to set.
+
+        Returns:
+            letter (char): Letter that was choosen for the cell.
+        """
+        total_weight = sum(self.getOptions(coords)[letter] for letter in self.getOptions(coords))
         rnd = random.random() * total_weight
 
-        for letter in self.getOptions((x, y)):
-            rnd -= self.getOptions((x, y))[letter]
+        for letter in self.getOptions(coords):
+            rnd -= self.getOptions(coords)[letter]
             if rnd < 0:
-                self.set((x, y), letter)
+                self.setLetter(coords, letter)
                 return letter
     
-    def is_fully_defined(self):
-        for y in range(self.height):
-            for x in range(self.width):
-                if not self.is_defined((x,y)):
-                    return False
-        return True
-    
-    def set(self, coords, letter):
+    def setLetter(self, coords, letter):
+        """Defines a single letter for a cell, discarding all other options.
+
+        Arguments:
+            coords (tuple): Coorinates of the cell to set.
+            letter (char): Letter to set.
+        """
         x, y = coords
         self.options[y][x] = {letter : 1}
 
-    def print_defined(self):
+    def printDefined(self):
+        """Prints the crossword, by only filling cells with single defined letters.
+        """
         out = "   "
         for x in range(self.width):
             out += " " + str(x) + " "
@@ -376,14 +436,16 @@ class Crossword(object):
         for y in range(self.height):
             out += " " + str(y) + " "
             for x in range(self.width):
-                if self.is_defined((x,y)):
+                if self.isDefined((x,y)):
                     out += " " + ''.join([letter for letter in  self.getOptions((x, y)) if  self.getOptions((x, y))[letter]>0]) + " "
                 else:
                     out += "   "
             out += "\n"
         print(out)
     
-    def print_options(self):
+    def printOptions(self):
+        """Prints the crossword, by filling cells with every letter that is still a valid option.
+        """
         #Column headers
         out = "   |"
         for x in range(self.width):
