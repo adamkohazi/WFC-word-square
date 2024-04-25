@@ -4,9 +4,9 @@ import string
 
 # For testing purposes
 from random import seed
-seed(1234)
+#seed(1234)
 
-size = [7,5]
+size = [5,5]
 lettersetHU = 'aábcdeéfghiíjklmnoóöőpqrstuúüűvwxyz'
 lettersetEN = string.ascii_lowercase
 
@@ -33,7 +33,7 @@ def optimize_dictionary (dict, lengths, letterset):
     return opt_dict
 
 def get_dictionary_word_list(filename):
-    with open(filename, encoding="iso-8859-2") as f:
+    with open(filename, encoding="utf-8") as f:
         # Return the split results, which is all the words in the file.
         return f.read().split()
 
@@ -46,8 +46,8 @@ def findLetterset(dictionary):
     return ''.join(letters)
 
 # Loading words to a dictionary for generation
-dict = get_dictionary_word_list("dictionary_EN.txt")
-#dict = optimize_dictionary(dict, size, lettersetHU)
+dict = get_dictionary_word_list("dictionary_HU.txt")
+dict = optimize_dictionary(dict, size, lettersetHU)
 
 table = wordmatrix.Crossword(size, dict, lettersetHU)
 wfc = wavefunction.Wavefunction(table)
@@ -57,8 +57,8 @@ print("inserting black squares")
 blankLocations=[(3,2 )]
 
 for coords in blankLocations:
-    wfc.root.wordmatrix.setOptions([coords], [{'-':1}])
-wfc.currentNode.wordmatrix.update_possibilities()
+    wfc.root.wordmatrix.setLetter(coords, '-')
+wfc.currentNode.wordmatrix.updateOptions()
 
 wfc.run()
 
