@@ -1,6 +1,7 @@
 import re
 import math
 import random
+import time
 
 #random.seed(1234) # Used for testing
 
@@ -24,7 +25,11 @@ class Crossword(object):
             letterset (string): All valid letters concatenated.
         """
         self.width, self.height = size
-        self.dictionary = dictionary
+        self.dictionary = {}
+        for length in range(max(size)):
+            self.dictionary[length+1] = []
+        for word in dictionary:
+            self.dictionary[len(word)].append(word)
 
         # Initially every letter is an option for every field
         self.options = [[dict.fromkeys(letterset, 9999) for w in range(self.width)] for h in range(self.height)]
@@ -32,7 +37,7 @@ class Crossword(object):
         self.blacklist = [[[] for w in range(self.width)] for h in range(self.height)]
 
         # Perform an initial update based on constraints from dictionary
-        self.update_possibilities()
+        self.updateOptions()
     
     def find_horizontal_word_letters(self, coords):
         """Finds the coordinates for each letter of a horizontal word.
@@ -155,7 +160,7 @@ class Crossword(object):
             self.options[y][x] = options[position]
     
     def setLetterCount(self, coords, letter, count):
-        """Sets the count (or validity if 0) of a single letter of cell for given coordinates.
+        """Sets the count of a single letter of cell for given coordinates. If count is 0, deletes the letter option.
         
         Arguments:
             coords (tuple): Coorinates of the cell to set.
@@ -163,7 +168,10 @@ class Crossword(object):
             count (int): Count of given letter. If 0, letter is considered invalid for this position.
         """
         x, y = coords
-        self.options[y][x][letter] = count
+        if count == 0:
+            del self.options[y][x][letter]
+        else:
+            self.options[y][x][letter] = count
     
     def getBlacklist(self, coords):
         """Lists blacklisted letters for a single cell.
@@ -177,7 +185,7 @@ class Crossword(object):
         x, y = coords
         return self.blacklist[y][x]
 
-    def add_blacklist(self, coords, letter):
+    def addToBlacklist(self, coords, letter):
         """Adds letter to blacklist for a single cell.
         
         Arguments:
@@ -210,7 +218,7 @@ class Crossword(object):
         r = re.compile(regex, re.UNICODE)
 
         # Find letter options/counts based on matching words
-        for word in list(filter(r.match, self.dictionary)):
+        for word in list(filter(r.match, self.dictionary[len(options)])):
             for position, letter in enumerate(word):
                 if letter not in frequencies[position]:
                     frequencies[position][letter] = 0
@@ -231,7 +239,7 @@ class Crossword(object):
         #TODO: Running the find frequencies function takes ~95% of the runtime. Performance could be greatly increased by performing less lookups.
         for position, frequencies in enumerate(self.find_frequencies(wordOptions)):
             coords = letterCoords[position]
-            for letter in self.getOptions(coords):
+            for letter in self.getOptions(coords).copy():
                 if letter not in frequencies or letter in self.getBlacklist(coords):
                     # Invalidate letters that are blacklisted or don't appear in words.
                     self.setLetterCount(coords, letter, 0)
@@ -241,7 +249,7 @@ class Crossword(object):
                     self.setLetterCount(coords, letter, min(self.getOptions(coords)[letter], frequencies[letter]))
 
     #@profile
-    def update_possibilities(self):
+    def updateOptions(self):
         """Iteratively updates letter options, until a minimum subset is reached. After this update, the crossword is either solvable and all invalid letters are eliminated or a deadend is confirmed.
         """
         old_total_options = 0
@@ -249,8 +257,11 @@ class Crossword(object):
             for x in range(self.width):
                 old_total_options += sum(self.getOptions((x, y))[letter] for letter in self.getOptions((x, y)))
         
+        startTime = time.perf_counter()
+        nUpdates = 0
         # Do this while the total number of valid letters are decreasing, hence the crossword is more defined
         while(True):
+            nUpdates += 1
             # Remove blacklisted letters:
             for y in range(self.height):
                 for x in range(self.width):
@@ -267,17 +278,16 @@ class Crossword(object):
 
             # Go through every cell
             for y in range(self.height):
-
-                # Stop updating if already deadend
-                if self.isDeadend():
-                    break
-
                 for x in range(self.width):
                     coords = (x, y)
 
                     # Skip cell if it's a blank
                     if self.getOptions(coords) == {"-" : 1}:
-                        next
+                        continue
+                    
+                    # Stop updating if already deadend
+                    if self.isDeadend():
+                        break
                     
                     # If horizontal word of the cell was not yet updated, update it
                     if horizontalUpdated[y][x] != True:
@@ -311,6 +321,9 @@ class Crossword(object):
             else:
                 old_total_options = new_total_options
         
+        endTime = time.perf_counter()
+        print("Updating options took: %.2gs and ran %d times" % (endTime-startTime, nUpdates))
+        return nUpdates
             
     def shannonEntropy(self, coords) -> float:
         """Calculates the Shannon entropy ("uncertainty") for a cell with given coordinates. Higher number means higher uncertainty.
@@ -384,6 +397,50 @@ class Crossword(object):
             for x in range(self.width):
                 if not self.isDefined((x,y)):
                     return False
+        return True
+    
+    def isFullyValid(self):
+        """Checks if every defined word is valid.
+
+        Returns:
+            (bool): True if every full word is valid, False otherwise.
+        """
+        for y in range(self.height):
+            for x in range(self.width):
+                # Skip cell if it's a blank
+                coords = (x,y)
+                if self.getOptions(coords) == {"-" : 1}:
+                    continue
+                
+                # Check horizontal word
+                horizontalCoords = self.find_horizontal_word_letters(coords)
+                wordFullyDefined = True
+                for xy in horizontalCoords:
+                    if not self.isDefined(xy):
+                        wordFullyDefined = False
+                        break
+
+                if wordFullyDefined:
+                    if ''.join([next(iter(self.getOptions(xy))) for xy in horizontalCoords]) not in self.dictionary[len(horizontalCoords)]:
+                        self.printOptions()
+                        self.printDefined()
+                        print("horizontal: ",''.join([next(iter(self.getOptions(xy))) for xy in horizontalCoords]))
+                        return False
+                
+                # Check vertical word
+                verticalCoords = self.find_vertical_word_letters(coords)
+                wordFullyDefined = True
+                for xy in verticalCoords:
+                    if not self.isDefined(xy):
+                        wordFullyDefined = False
+                        break
+
+                if wordFullyDefined:
+                    if ''.join([next(iter(self.getOptions(xy))) for xy in verticalCoords]) not in self.dictionary[len(verticalCoords)]:
+                        self.printOptions()
+                        self.printDefined()
+                        print("vertical: ",''.join([next(iter(self.getOptions(xy))) for xy in verticalCoords]))
+                        return False
         return True
     
     def isDeadend(self):
@@ -514,7 +571,7 @@ class Crossword(object):
 
             out += "   |"
             for x in range(self.width):
-                for letter in "yz-   ":
+                for letter in "yz-áéó":
                     if letter in self.getOptions((x, y)):
                         if self.getOptions((x, y))[letter] > 0:
                             out += letter
