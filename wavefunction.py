@@ -21,15 +21,15 @@ class Wavefunction(object):
         while not self.currentNode.wordmatrix.isFullyDefined():
             if self.currentNode == self.root and self.currentNode.wordmatrix.isDeadend():
                 print("No more options")
-                print(self.currentNode.wordmatrix.blacklist)
+                #print(self.currentNode.wordmatrix.blacklist)
                 break
             else:
                 self.iterate()
         
         endTime = time.perf_counter()
-        self.print_tree()
-        self.currentNode.wordmatrix.printOptions()
-        self.currentNode.wordmatrix.printDefined()
+        #self.print_tree()
+        #self.currentNode.wordmatrix.printOptions()
+        #self.currentNode.wordmatrix.printDefined()
         print("%d updates in total." % self.totalUpdates)
         print("Total time: %.2gs" % (endTime-startTime))
     
@@ -73,7 +73,7 @@ class Wavefunction(object):
             #print(self.currentNode.wordmatrix.blacklist)
         
         # Debug printing
-        #self.wordmatrix.print_defined()
+        self.currentNode.wordmatrix.printDefined()
         #self.print_tree()
         #self.currentNode.wordmatrix.print_options()
 

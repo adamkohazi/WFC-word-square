@@ -3,8 +3,6 @@ import math
 import random
 import time
 
-#random.seed(1234) # Used for testing
-
 class Crossword(object):
     """Class for keeping track of and interacting with a rectangular crossword grid.
 
@@ -14,6 +12,7 @@ class Crossword(object):
         dictionary (dict): Valid words that can be used to fill the grid.
         options (2D list of dicts): Valid letters for each cell of the grid.
         blacklist (2D list of lists): Letters that result in an unsolvable state for each cell of the grid.
+        mask (2D list of bool): Indicates if certain cells should be excluded from the word validity checks.
     """
 
     def __init__(self, size, dictionary, letterset):
@@ -35,6 +34,8 @@ class Crossword(object):
         self.options = [[dict.fromkeys(letterset, 9999) for w in range(self.width)] for h in range(self.height)]
         # Start with a clean blacklist
         self.blacklist = [[[] for w in range(self.width)] for h in range(self.height)]
+        # Clean mask
+        self.mask = [[False for w in range(self.width)] for h in range(self.height)]
 
         # Perform an initial update based on constraints from dictionary
         self.updateOptions()
@@ -189,12 +190,35 @@ class Crossword(object):
         """Adds letter to blacklist for a single cell.
         
         Arguments:
-            coords (tuple): Coorinates of the cell to check.
+            coords (tuple): Coorinates of the cell to set.
             letter (char): Letter to blacklist.
 
         """
         x, y = coords
         self.blacklist[y][x].append(letter)
+    
+    def getMask(self, coords):
+        """Returns if given cell is excluded from word validity checks.
+        
+        Arguments:
+            coords (tuple): Coorinates of the cell to check.
+
+        Returns:
+            (bool): True if cell is excluded from validity checks.
+        """
+        x, y = coords
+        return self.mask[y][x]
+
+    def setMask(self, coords, value=True):
+        """Sets mask for a single cell.
+        
+        Arguments:
+            coords (tuple): Coorinates of the cell to set.
+            value (bool): (True by default) Mask status for set.
+
+        """
+        x, y = coords
+        self.mask[y][x] = value
 
     #@profile
     def find_frequencies(self, options):
@@ -211,7 +235,7 @@ class Crossword(object):
         frequencies = [{} for option in options]
 
         # Convert elements to regular expression:
-        regex = ""
+        regex = "^"
         for element in options:
             regex += "[" + ''.join([letter for letter in element if element[letter]>0]) + "]"
         regex += "$"
@@ -281,8 +305,8 @@ class Crossword(object):
                 for x in range(self.width):
                     coords = (x, y)
 
-                    # Skip cell if it's a blank
-                    if self.getOptions(coords) == {"-" : 1}:
+                    # Skip cell if it's defined or masked
+                    if self.isDefined(coords) or self.getMask(coords):
                         continue
                     
                     # Stop updating if already deadend
@@ -292,7 +316,8 @@ class Crossword(object):
                     # If horizontal word of the cell was not yet updated, update it
                     if horizontalUpdated[y][x] != True:
                         wordCoords = self.find_horizontal_word_letters(coords)
-                        self.updateWordOptions(wordCoords)
+                        if(len(wordCoords)>2):
+                            self.updateWordOptions(wordCoords)
                         # Note that the word was updated
                         for x1, y1 in wordCoords:
                             horizontalUpdated[y1][x1] = True
@@ -304,7 +329,8 @@ class Crossword(object):
                     # If vertical word of the cell was not yet updated, update it
                     if verticalUpdated[y][x] != True:
                         wordCoords = self.find_vertical_word_letters(coords)
-                        self.updateWordOptions(wordCoords)
+                        if(len(wordCoords)>2):
+                            self.updateWordOptions(wordCoords)
                         # Note that the word was updated
                         for x1, y1 in wordCoords:
                             verticalUpdated[y1][x1] = True
@@ -407,42 +433,54 @@ class Crossword(object):
         """
         for y in range(self.height):
             for x in range(self.width):
-                # Skip cell if it's a blank
+                # Skip cell if it's a blank or masked
                 coords = (x,y)
-                if self.getOptions(coords) == {"-" : 1}:
+                if self.getOptions(coords) == {"-" : 1} or self.getMask(coords):
                     continue
                 
                 # Check horizontal word
                 horizontalCoords = self.find_horizontal_word_letters(coords)
-                wordFullyDefined = True
-                for xy in horizontalCoords:
-                    if not self.isDefined(xy):
-                        wordFullyDefined = False
-                        break
-
-                if wordFullyDefined:
+                if len(horizontalCoords)>2 and all(self.isDefined(xy) for xy in horizontalCoords):
                     if ''.join([next(iter(self.getOptions(xy))) for xy in horizontalCoords]) not in self.dictionary[len(horizontalCoords)]:
-                        self.printOptions()
-                        self.printDefined()
-                        print("horizontal: ",''.join([next(iter(self.getOptions(xy))) for xy in horizontalCoords]))
                         return False
                 
                 # Check vertical word
                 verticalCoords = self.find_vertical_word_letters(coords)
-                wordFullyDefined = True
-                for xy in verticalCoords:
-                    if not self.isDefined(xy):
-                        wordFullyDefined = False
-                        break
-
-                if wordFullyDefined:
+                if len(verticalCoords)>2 and all(self.isDefined(xy) for xy in verticalCoords):
                     if ''.join([next(iter(self.getOptions(xy))) for xy in verticalCoords]) not in self.dictionary[len(verticalCoords)]:
-                        self.printOptions()
-                        self.printDefined()
-                        print("vertical: ",''.join([next(iter(self.getOptions(xy))) for xy in verticalCoords]))
                         return False
         return True
-    
+
+    def printAssessment(self):
+        """Checks if every defined word is valid.
+
+        Returns:
+            (bool): True if every full word is valid, False otherwise.
+        """
+        wordOptions = [[999 for w in range(self.width)] for h in range(self.height)]
+
+        for y in range(self.height):
+            for x in range(self.width):
+                # Skip cell if it's defined or masked
+                if self.isDefined((x,y)) or self.getMask((x,y)):
+                    continue
+                
+                # Check horizontal word
+                wordCoords = self.find_horizontal_word_letters((x,y))
+                if len(wordCoords) > 2:
+                    # Convert elements to regular expression:
+                    regex = "^"
+                    for coords in wordCoords:
+                        if self.isDefined(coords):
+                            regex += next(iter(self.getOptions(coords)))
+                        else:
+                            regex += '.'
+                    regex += "$"
+                    r = re.compile(regex, re.UNICODE)
+
+                    wordOptions[y][x] = len(list(filter(r.match, self.dictionary[len(wordCoords)])))
+        print(wordOptions)
+                
     def isDeadend(self):
         """Checks if crossword is a deadend, meaning there's at least one cell with no valid options.
 
@@ -494,7 +532,7 @@ class Crossword(object):
             out += " " + str(y) + " "
             for x in range(self.width):
                 if self.isDefined((x,y)):
-                    out += " " + ''.join([letter for letter in  self.getOptions((x, y)) if  self.getOptions((x, y))[letter]>0]) + " "
+                    out += " " + next(iter(self.getOptions((x,y)))) + " "
                 else:
                     out += "   "
             out += "\n"

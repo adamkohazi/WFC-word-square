@@ -1,12 +1,13 @@
 import wordmatrix
 import wavefunction
 import string
+from copy import deepcopy
 
 # For testing purposes
-from random import seed
-#seed(1234)
+import random
+#random.seed(1234)
 
-size = [5,5]
+size = [6,11]
 lettersetHU = 'aábcdeéfghiíjklmnoóöőpqrstuúüűvwxyz'
 lettersetEN = string.ascii_lowercase
 
@@ -46,19 +47,55 @@ def findLetterset(dictionary):
     return ''.join(letters)
 
 # Loading words to a dictionary for generation
-dict = get_dictionary_word_list("dictionary_HU.txt")
+dict = get_dictionary_word_list("HU_160k.txt")
+
+constraints =["N   -   -    - ",
+              "A  -   -    -  ",
+              "G     -        ",
+              "Y-        -    ",
+              "O   -    -    -",
+              "N  -         - ",
+              "B -    -    -  ",
+              "O-   -         ",
+              "L         --   ",
+              "D   -         -",
+              "O  -    -    - ",
+              "G       -   -  ",
+              "G-    -        ",
+              "Y -       -    ",
+              "Ö   -   --    -",
+              "R   -        - ",
+              "G -    -    -  ",
+              "YINAPOTKÍVÁNUNK",
+              ]
+
+y = len(constraints)
+x = max(len(row) for row in constraints)
+size = (x,y)
+
 dict = optimize_dictionary(dict, size, lettersetHU)
-
 table = wordmatrix.Crossword(size, dict, lettersetHU)
-wfc = wavefunction.Wavefunction(table)
 
+blocks = []
+while(True):
+    wfc = wavefunction.Wavefunction(deepcopy(table))
+    print("Prefilling grid:")
+    for y,row in enumerate(constraints):
+        for x,letter in enumerate(row):
+            if letter != " ":
+                wfc.root.wordmatrix.setLetter((x,y), letter.lower())
+                wfc.root.wordmatrix.setMask((x,y))
 
-print("inserting black squares")
-blankLocations=[(3,2 )]
+    for coords in blocks:
+        wfc.root.wordmatrix.setLetter(coords, "-")
+        wfc.root.wordmatrix.setMask(coords)
 
-for coords in blankLocations:
-    wfc.root.wordmatrix.setLetter(coords, '-')
-wfc.currentNode.wordmatrix.updateOptions()
+    wfc.currentNode.wordmatrix.printDefined()
+    wfc.currentNode.wordmatrix.printAssessment()
+    wfc.currentNode.wordmatrix.updateOptions()
 
-wfc.run()
+    if wfc.run():
+        break
+    else:
+        blocks.append((random.randint(1, x), random.randint(0, y-1)))
 
