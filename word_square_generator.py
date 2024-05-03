@@ -47,26 +47,23 @@ def findLetterset(dictionary):
     return ''.join(letters)
 
 # Loading words to a dictionary for generation
-dict = get_dictionary_word_list("HU_160k.txt")
+dict = get_dictionary_word_list("dictionary_HU.txt")
 
-constraints =["N   -   -    - ",
-              "A  -   -    -  ",
-              "G     -        ",
-              "Y-        -    ",
-              "O   -    -    -",
-              "N  -         - ",
-              "B -    -    -  ",
-              "O-   -         ",
-              "L         --   ",
-              "D   -         -",
-              "O  -    -    - ",
-              "G       -   -  ",
-              "G-    -        ",
-              "Y -       -    ",
-              "Ö   -   --    -",
-              "R   -        - ",
-              "G -    -    -  ",
-              "YINAPOTKÍVÁNUNK",
+constraints =["-N     -       ", # 0
+              "-A      -   -  ", # 1
+              " G  -     -    ", # 2
+              "-Y -     -    -", # 3
+              " O     -       ", # 4
+              "-N    -   -    ", # 5
+              "-B-  -   -    -", # 6
+              "-O -    -    - ", # 7
+              " L     -    -  ", # 8
+              "-D -       -   ", # 9
+              " O  -         -", # 10
+              " G   -   -     ", # 11
+              "-N -    -   -  ", # 12
+              " É   -    -    ", # 13
+              "-VNAPOTKÍVÁNUNK", # 14
               ]
 
 y = len(constraints)
@@ -76,26 +73,18 @@ size = (x,y)
 dict = optimize_dictionary(dict, size, lettersetHU)
 table = wordmatrix.Crossword(size, dict, lettersetHU)
 
-blocks = []
-while(True):
-    wfc = wavefunction.Wavefunction(deepcopy(table))
-    print("Prefilling grid:")
-    for y,row in enumerate(constraints):
-        for x,letter in enumerate(row):
-            if letter != " ":
-                wfc.root.wordmatrix.setLetter((x,y), letter.lower())
-                wfc.root.wordmatrix.setMask((x,y))
+wfc = wavefunction.Wavefunction(deepcopy(table))
+print("Prefilling grid:")
+for y,row in enumerate(constraints):
+    for x,letter in enumerate(row):
+        if letter != " ":
+            wfc.root.wordmatrix.setLetter((x,y), letter.lower())
+            wfc.root.wordmatrix.setMask((x,y))
 
-    for coords in blocks:
-        wfc.root.wordmatrix.setLetter(coords, "-")
-        wfc.root.wordmatrix.setMask(coords)
-
-    wfc.currentNode.wordmatrix.printDefined()
-    wfc.currentNode.wordmatrix.printAssessment()
-    wfc.currentNode.wordmatrix.updateOptions()
-
-    if wfc.run():
-        break
-    else:
-        blocks.append((random.randint(1, x), random.randint(0, y-1)))
-
+wfc.currentNode.wordmatrix.printDefined()
+wfc.currentNode.wordmatrix.printAssessment()
+wfc.currentNode.wordmatrix.updateOptions()
+if wfc.currentNode.wordmatrix.isDeadend():
+    print("oh no")
+else:
+    wfc.run()
