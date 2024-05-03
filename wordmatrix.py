@@ -40,7 +40,7 @@ class Crossword(object):
         # Perform an initial update based on constraints from dictionary
         self.updateOptions()
     
-    def find_horizontal_word_letters(self, coords):
+    def findHorizontalWordLetters(self, coords):
         """Finds the coordinates for each letter of a horizontal word.
 
         Arguments:
@@ -68,7 +68,7 @@ class Crossword(object):
         
         return letterCoordinates
 
-    def find_vertical_word_letters(self, coords):
+    def findVerticalWordLetters(self, coords):
         """Finds the coordinates for each letter of a vertical word.
         
         Arguments:
@@ -315,7 +315,7 @@ class Crossword(object):
                     
                     # If horizontal word of the cell was not yet updated, update it
                     if horizontalUpdated[y][x] != True:
-                        wordCoords = self.find_horizontal_word_letters(coords)
+                        wordCoords = self.findHorizontalWordLetters(coords)
                         if(len(wordCoords)>2):
                             self.updateWordOptions(wordCoords)
                         # Note that the word was updated
@@ -328,7 +328,7 @@ class Crossword(object):
 
                     # If vertical word of the cell was not yet updated, update it
                     if verticalUpdated[y][x] != True:
-                        wordCoords = self.find_vertical_word_letters(coords)
+                        wordCoords = self.findVerticalWordLetters(coords)
                         if(len(wordCoords)>2):
                             self.updateWordOptions(wordCoords)
                         # Note that the word was updated
@@ -439,13 +439,13 @@ class Crossword(object):
                     continue
                 
                 # Check horizontal word
-                horizontalCoords = self.find_horizontal_word_letters(coords)
+                horizontalCoords = self.findHorizontalWordLetters(coords)
                 if len(horizontalCoords)>2 and all(self.isDefined(xy) for xy in horizontalCoords):
                     if ''.join([next(iter(self.getOptions(xy))) for xy in horizontalCoords]) not in self.dictionary[len(horizontalCoords)]:
                         return False
                 
                 # Check vertical word
-                verticalCoords = self.find_vertical_word_letters(coords)
+                verticalCoords = self.findVerticalWordLetters(coords)
                 if len(verticalCoords)>2 and all(self.isDefined(xy) for xy in verticalCoords):
                     if ''.join([next(iter(self.getOptions(xy))) for xy in verticalCoords]) not in self.dictionary[len(verticalCoords)]:
                         return False
@@ -457,16 +457,19 @@ class Crossword(object):
         Returns:
             (bool): True if every full word is valid, False otherwise.
         """
-        wordOptions = [[999 for w in range(self.width)] for h in range(self.height)]
-
+        wordOptions = [[" " for w in range(self.width)] for h in range(self.height)]
+        
+        # Assess number of word options considering only fixed letters
         for y in range(self.height):
             for x in range(self.width):
                 # Skip cell if it's defined or masked
                 if self.isDefined((x,y)) or self.getMask((x,y)):
+                    wordOptions[y][x] = next(iter(self.getOptions((x,y))))
                     continue
                 
                 # Check horizontal word
-                wordCoords = self.find_horizontal_word_letters((x,y))
+                wordCoords = self.findHorizontalWordLetters((x,y))
+                horizontalCount = 9999
                 if len(wordCoords) > 2:
                     # Convert elements to regular expression:
                     regex = "^"
@@ -478,8 +481,65 @@ class Crossword(object):
                     regex += "$"
                     r = re.compile(regex, re.UNICODE)
 
-                    wordOptions[y][x] = len(list(filter(r.match, self.dictionary[len(wordCoords)])))
-        print(wordOptions)
+                    horizontalCount = len(list(filter(r.match, self.dictionary[len(wordCoords)])))
+                
+                # Check vertical word
+                wordCoords = self.findVerticalWordLetters((x,y))
+                verticalCount = 9999
+                if len(wordCoords) > 2:
+                    # Convert elements to regular expression:
+                    regex = "^"
+                    for coords in wordCoords:
+                        if self.isDefined(coords):
+                            regex += next(iter(self.getOptions(coords)))
+                        else:
+                            regex += '.'
+                    regex += "$"
+                    r = re.compile(regex, re.UNICODE)
+
+                    verticalCount = len(list(filter(r.match, self.dictionary[len(wordCoords)])))
+
+                wordOptions[y][x] = math.log10(min(horizontalCount, verticalCount))
+
+        self.printMatrix(wordOptions, 5)
+
+        horizontalUpdated = [[False for w in range(self.width)] for h in range(self.height)]
+        verticalUpdated = [[False for w in range(self.width)] for h in range(self.height)]
+
+        horizontalLength = [[' ' for w in range(self.width)] for h in range(self.height)]
+        verticalLength = [[' ' for w in range(self.width)] for h in range(self.height)]
+
+        lengthDistribution = [0 for n in range(max(self.width, self.height) + 1)]
+
+
+        # Assess word lengths
+        for y in range(self.height):
+            for x in range(self.width):
+                # Skip cell if it's a blank
+                if self.getOptions((x,y)) == {"-" : 1}:
+                    continue
+                
+                # Check horizontal word
+                horizontalCoords = self.findHorizontalWordLetters((x,y))
+                horizontalLength[y][x] = len(horizontalCoords)
+                # If horizontal word yet counted, increment counter
+                if horizontalUpdated[y][x] != True:
+                    lengthDistribution[horizontalLength[y][x]] += 1
+                    for x1, y1 in horizontalCoords:
+                        horizontalUpdated[y1][x1] = True
+                        
+                # Check vertical word
+                verticalCoords = self.findVerticalWordLetters((x,y))
+                verticalLength[y][x] = len(verticalCoords)
+                # If vertical word yet counted, increment counter
+                if verticalUpdated[y][x] != True:
+                    lengthDistribution[verticalLength[y][x]] += 1
+                    for x1, y1 in verticalCoords:
+                        verticalUpdated[y1][x1] = True
+
+        self.printMatrix(horizontalLength)
+        self.printMatrix(verticalLength)
+        print(lengthDistribution)
                 
     def isDeadend(self):
         """Checks if crossword is a deadend, meaning there's at least one cell with no valid options.
@@ -524,17 +584,28 @@ class Crossword(object):
     def printDefined(self):
         """Prints the crossword, by only filling cells with single defined letters.
         """
-        out = "   "
-        for x in range(self.width):
-            out += " " + str(x) + " "
-        out += "\n"
+        defined = [[" " for w in range(self.width)] for h in range(self.height)]
         for y in range(self.height):
-            out += " " + str(y) + " "
             for x in range(self.width):
                 if self.isDefined((x,y)):
-                    out += " " + next(iter(self.getOptions((x,y)))) + " "
-                else:
-                    out += "   "
+                    defined[y][x] = next(iter(self.getOptions((x,y))))
+        self.printMatrix(defined)
+    
+    def printMatrix(self, matrix, width=3):
+        """Prints any value into the console, in a nice matrix-like way
+
+        Arguments:
+            matrix (2D list): Matrix of values that should be printed. Any type is acceptable as long as it can be cast to string using str().
+            width (int): Width of one column in characters.
+        """
+        out = "   "
+        for x in range(self.width):
+            out += str(x).center(width)
+        out += "\n"
+        for y in range(self.height):
+            out += str(y).center(width)
+            for x in range(self.width):
+                out += str(matrix[y][x])[:width].center(width)
             out += "\n"
         print(out)
     
