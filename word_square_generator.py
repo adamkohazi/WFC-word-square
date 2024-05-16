@@ -2,6 +2,12 @@ import wordmatrix
 import wavefunction
 import string
 from copy import deepcopy
+from kivy.app import App
+from kivy.uix.widget import Widget
+from kivy.lang.builder import Builder
+from kivy.properties import *
+from kivy.uix.screenmanager import ScreenManager, Screen
+
 
 # For testing purposes
 import random
@@ -71,9 +77,28 @@ x = max(len(row) for row in constraints)
 size = (x,y)
 
 dict = optimize_dictionary(dict, size, lettersetHU)
-table = wordmatrix.Crossword(size, dict, lettersetHU)
+rootCrossword = wordmatrix.Crossword(size, dict, lettersetHU)
+solver = wavefunction.Wavefunction(rootCrossword)
 
-wfc = wavefunction.Wavefunction(deepcopy(table))
+
+class MainApp(App):
+    def build(self):
+        self.root = Builder.load_file("main.kv")
+        return self.root
+    
+    def setCrosswordSize(self):
+        try:
+            size = int(self.root.ids.width_text.text), int(self.root.ids.height_text.text)
+            print(size)
+        except:
+            print("wrong format")
+    
+    pass
+
+if __name__ == "__main__":
+    MainApp().run()
+
+"""
 print("Prefilling grid:")
 for y,row in enumerate(constraints):
     for x,letter in enumerate(row):
@@ -88,3 +113,7 @@ if wfc.currentNode.wordmatrix.isDeadend():
     print("oh no")
 else:
     wfc.run()
+    
+"""
+
+
