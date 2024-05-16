@@ -37,8 +37,8 @@ class Crossword(object):
         # Clean mask
         self.mask = [[False for w in range(self.width)] for h in range(self.height)]
 
-        # Perform an initial update based on constraints from dictionary
-        self.updateOptions()
+        # Perform an initial update based on constraints from dictionary TODO
+        #self.updateOptions()
     
     def findHorizontalWordLetters(self, coords):
         """Finds the coordinates for each letter of a horizontal word.

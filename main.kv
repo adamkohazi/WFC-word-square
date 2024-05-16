@@ -1,0 +1,84 @@
+#:kivy 2.3.0
+
+BoxLayout:
+    orientation: "vertical"
+    
+    GridLayout:
+        cols: 5
+        rows: 5
+
+        Button:
+            text: "upper"
+
+        Button:
+            text: "upper 2"
+        
+    StackLayout:
+        size_hint_y: None
+        height: 100
+        orientation: "lr-tb"
+
+        StackLayout:
+            size_hint_x: None
+            orientation: "tb-lr"
+            width: 200
+            Label:
+            	size_hint_y: None
+            	height: 30
+            	text: "Dimensions"
+            StackLayout:
+            	size_hint_y: None
+            	height: 30
+            	Label:
+            		size_hint_x: None
+            		width: 80
+                	text: "Width: "
+                Button:
+            		size_hint_x: None
+            		width: 30
+                	text: "-"
+            	TextInput:
+                    id: width_text
+            		width: 50
+            		size_hint_x: None
+            		text: "5"
+                    input_filter: "int"
+                    multiline: False
+                    on_text_validate: app.setCrosswordSize()
+                Button:
+            		size_hint_x: None
+            		width: 30
+                	text: "+"
+            StackLayout:
+            	size_hint_y: None
+            	height: 30
+            	Label:
+            		size_hint_x: None
+            		width: 80
+                	text: "Height: "
+                Button:
+            		size_hint_x: None
+            		width: 30
+                	text: "-"
+            	TextInput:
+                    id: height_text
+            		width: 50
+            		size_hint_x: None
+            		text: "5"
+                    input_filter: "int"
+                    multiline: False
+                    on_text_validate: app.setCrosswordSize()
+                Button:
+            		size_hint_x: None
+            		width: 30
+                	text: "+"
+
+        Button:
+            size_hint: None, 1
+            width: 200
+            text: "2"
+
+        Button:
+            size_hint: None, 1
+            width: 200
+            text: "3"
