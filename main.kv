@@ -1,17 +1,45 @@
 #:kivy 2.3.0
 
+<CrosswordCell>
+    cell_options: cell_options
+
+    multiline: False
+    halign: "center"
+    font_size: 0.8 * self.size[1]
+    padding: 0
+    border: 2, 2, 2, 2
+
+    background_color: 1, 1, 1, 1
+    cursor_color: self.background_color
+
+    Label:
+        id: cell_options
+        font_size: 0.2 * self.parent.font_size
+        text_size: self.size
+        halign: 'left'
+        valign: 'top'
+    
+    Label:
+        id: cell_options
+
 BoxLayout:
     orientation: "vertical"
-    
-    GridLayout:
-        cols: 5
-        rows: 5
 
-        Button:
-            text: "upper"
+    AnchorLayout:
+        padding: 50, 50, 50, 50
 
-        Button:
-            text: "upper 2"
+        GridLayout:
+            id: grid
+            cols: 5
+            rows: 5
+            height: self.minimum_height
+            width: self.minimum_width
+            size_hint: None, None
+            row_default_height: min((self.parent.size[0] - 100)/self.cols, (self.parent.size[1] - 100)/self.rows)
+            row_force_default: True
+            col_default_width: self.row_default_height
+            col_force_default: True
+
         
     StackLayout:
         size_hint_y: None
@@ -37,18 +65,23 @@ BoxLayout:
             		size_hint_x: None
             		width: 30
                 	text: "-"
-            	TextInput:
+                    on_press: width_text.decrement()
+            	NumericInput:
                     id: width_text
+                    size_hint_x: None
             		width: 50
-            		size_hint_x: None
             		text: "5"
-                    input_filter: "int"
-                    multiline: False
-                    on_text_validate: app.setCrosswordSize()
+                    halign: "center"
+                    min_value : 1
+                    max_value : 20
+                    hint_text : '{}-{}'.format(self.min_value, self.max_value)
+                    on_text: app.setCrosswordSize()
                 Button:
             		size_hint_x: None
             		width: 30
                 	text: "+"
+                    on_press: width_text.increment()
+
             StackLayout:
             	size_hint_y: None
             	height: 30
@@ -60,25 +93,55 @@ BoxLayout:
             		size_hint_x: None
             		width: 30
                 	text: "-"
-            	TextInput:
+                    on_press: height_text.decrement()
+            	NumericInput:
                     id: height_text
+                    size_hint_x: None
             		width: 50
-            		size_hint_x: None
             		text: "5"
-                    input_filter: "int"
-                    multiline: False
-                    on_text_validate: app.setCrosswordSize()
+                    halign: "center"
+                    min_value : 1
+                    max_value : 20
+                    hint_text : '{}-{}'.format(self.min_value, self.max_value)
+                    on_text: app.setCrosswordSize()
                 Button:
             		size_hint_x: None
             		width: 30
                 	text: "+"
+                    on_press: height_text.increment()
 
-        Button:
-            size_hint: None, 1
+        StackLayout:
+            size_hint_x: None
+            orientation: "tb-lr"
             width: 200
-            text: "2"
+            Label:
+            	size_hint_y: None
+            	height: 30
+            	text: "Analysis"
+            Button:
+                size_hint_y: None
+            	height: 30
+            	text: "Lorem"
+            Button:
+                size_hint_y: None
+            	height: 30
+            	text: "Ipsum"
 
-        Button:
-            size_hint: None, 1
+        StackLayout:
+            size_hint_x: None
+            orientation: "tb-lr"
             width: 200
-            text: "3"
+            Label:
+            	size_hint_y: None
+            	height: 30
+            	text: "Solver"
+            Button:
+                size_hint_y: None
+            	height: 30
+            	text: "Start"
+                on_press: app.startSolver()
+            Button:
+                size_hint_y: None
+            	height: 30
+            	text: "Reset"
+                on_press: app.resetSolver()

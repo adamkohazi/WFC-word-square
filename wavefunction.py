@@ -2,10 +2,12 @@ import history_tree
 from anytree import RenderTree
 from copy import deepcopy
 import time
+from threading import Thread
+import queue
 
-class Wavefunction(object):
-
+class WFCSolver(object):
     def __init__(self, crossword):
+        super(WFCSolver, self).__init__()
         self.root = history_tree.MoveNode(0, 0, '-',  crossword, parent=None, children=None)
         self.currentNode = self.root
         self.treelevel = 0
@@ -13,7 +15,7 @@ class Wavefunction(object):
         self.totalUpdates = 0
 
     #@profile
-    def run(self):
+    def solve(self):
         """Runs iterations until the crossword is fully solved, or out of options.
         """
 
@@ -81,3 +83,22 @@ class Wavefunction(object):
         for pre, _, node in RenderTree(self.root):
             treestr = u"%s%s%s%s" % (pre, node.x, node.y, node.letter)
             print(treestr.ljust(8))
+
+# Event loop for threaded solver: https://stackoverflow.com/questions/19033818/how-to-call-a-function-on-a-running-python-thread
+# Threaded task just for solver: https://stackoverflow.com/questions/16745507/tkinter-how-to-use-threads-to-preventing-main-event-loop-from-freezing
+
+class TreadedWFCSolver(WFCSolver, Thread):
+    def __init__(self, crossword, queue):
+        WFCSolver.__init__(self, crossword)
+        Thread.__init__(self)
+        self.queue = queue
+    
+    def solve(self):
+        while not self.currentNode.crossword.isFullyDefined():
+            if self.currentNode == self.root and self.currentNode.crossword.isDeadend():
+                print("No more options")
+                #print(self.currentNode.crossword.blacklist)
+                break
+            else:
+                self.iterate()
+                self.queue.put(self.currentNode.crossword)
