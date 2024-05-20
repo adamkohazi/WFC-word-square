@@ -3,6 +3,9 @@ import math
 import random
 import time
 
+class Cell(object):
+    pass
+
 class Crossword(object):
     """Class for keeping track of and interacting with a rectangular crossword grid.
 
@@ -28,7 +31,8 @@ class Crossword(object):
         for length in range(max(size)):
             self.dictionary[length+1] = []
         for word in dictionary:
-            self.dictionary[len(word)].append(word)
+            if len(word) <= max(size):
+                self.dictionary[len(word)].append(word)
 
         # Initially every letter is an option for every field
         self.options = [[dict.fromkeys(letterset, 9999) for w in range(self.width)] for h in range(self.height)]
