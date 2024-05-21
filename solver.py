@@ -14,7 +14,9 @@ class WFCSolver(object):
         self.i = 0
         self.totalUpdates = 0
 
-    #@profile
+    def reset(self):
+        self.root = history_tree.MoveNode(0, 0, '-',  self.root.crossword, parent=None, children=None)
+
     def solve(self):
         """Runs iterations until the crossword is fully solved, or out of options.
         """
@@ -120,3 +122,25 @@ class TreadedWFCSolver(WFCSolver, Thread):
         
     def solve(self):
         self.onThread(self._solve)
+    
+    def _reset(self):
+        self.root = history_tree.MoveNode(0, 0, '-',  self.root.crossword, parent=None, children=None)
+        self.currentNode = self.root
+        self.treelevel = 0
+        self.i = 0
+        self.totalUpdates = 0
+        self.statusQueue.put(self.currentNode.crossword)
+
+    def _set(self, crossword):
+        self.root = history_tree.MoveNode(0, 0, '-',  crossword, parent=None, children=None)
+        self.currentNode = self.root
+        self.treelevel = 0
+        self.i = 0
+        self.totalUpdates = 0
+        self.statusQueue.put(self.currentNode.crossword)
+    
+    def reset(self):
+        self.onThread(self._reset)
+
+    def set(self, crossword):
+        self.onThread(self._set, crossword)
