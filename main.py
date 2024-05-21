@@ -1,5 +1,5 @@
-import wordmatrix
-import wavefunction
+import crossword
+import solver
 import string
 from copy import deepcopy
 from kivy.app import App
@@ -136,9 +136,9 @@ class MainApp(App):
         self.queue = Queue()
 
         size = (int(self.width), int(self.height))
-        rootCrossword = wordmatrix.Crossword(size, dict, lettersetHU)
+        rootCrossword = crossword.Crossword(size, dict, lettersetHU)
         
-        self.threadedSolver = wavefunction.TreadedWFCSolver(rootCrossword, self.queue)
+        self.threadedSolver = solver.TreadedWFCSolver(rootCrossword, self.queue)
         self.threadedSolver.start()
 
         self.root = Builder.load_file("main.kv")
@@ -180,8 +180,8 @@ class MainApp(App):
     
     def resetSolver(self):
         size = (int(self.width), int(self.height))
-        rootCrossword = wordmatrix.Crossword(size, dict, lettersetHU)
-        self.threadedSolver = wavefunction.TreadedWFCSolver(rootCrossword, self.queue)
+        rootCrossword = crossword.Crossword(size, dict, lettersetHU)
+        self.threadedSolver = solver.TreadedWFCSolver(rootCrossword, self.queue)
 
     def setCrosswordSize(self):
         global solver
@@ -194,8 +194,8 @@ class MainApp(App):
             self.root.ids.grid.cols = self.width
             self.root.ids.grid.rows = self.height
             self.addCells()
-            rootCrossword = wordmatrix.Crossword(size, dict, lettersetHU)
-            solver = wavefunction.WFCThreadedSolver(rootCrossword)
+            rootCrossword = crossword.Crossword(size, dict, lettersetHU)
+            solver = solver.WFCThreadedSolver(rootCrossword)
         except:
             pass
 
