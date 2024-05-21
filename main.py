@@ -121,6 +121,8 @@ class CrosswordCell(TextInput):
     def update(self, defined, masked, options, entropy):
         if defined:
             self.text = next(iter(options))
+        else:
+            self.text = ''
         if self.text == '-':
             self.background_color = 0,0,0,1
         else:
@@ -129,14 +131,14 @@ class CrosswordCell(TextInput):
         return self
 
 class MainApp(App):
-    width = NumericProperty(5)
-    height = NumericProperty(5)
+    crosswordWidth = NumericProperty(5)
+    crosswordHeight = NumericProperty(5)
 
     def build(self):
         self.statusQueue = Queue()
         self.commandQueue = Queue()
 
-        size = (int(self.width), int(self.height))
+        size = (int(self.crosswordWidth), int(self.crosswordHeight))
         rootCrossword = crossword.Crossword(size, dict, lettersetHU)
         
         self.threadedSolver = solver.TreadedWFCSolver(rootCrossword, self.statusQueue, self.commandQueue)
@@ -145,7 +147,7 @@ class MainApp(App):
         self.root = Builder.load_file("main.kv")
         self.addCells()
 
-        Clock.schedule_interval(self.update, 1.0/10.0)
+        Clock.schedule_interval(self.update, 1.0/60.0)
         return self.root
     
     def update(self, dt):
@@ -170,55 +172,35 @@ class MainApp(App):
         self.root.ids.grid.clear_widgets()
     
     def addCells(self):
-        for y in range(self.width):
-            for x in range(self.height):
+        for y in range(self.crosswordWidth):
+            for x in range(self.crosswordHeight):
                 self.root.ids.grid.add_widget(CrosswordCell(pos_x=x, pos_y=y))
 
     def startSolver(self):
         print("starting")
         self.threadedSolver.solve()
-        pass
     
     def resetSolver(self):
-        size = (int(self.width), int(self.height))
-        rootCrossword = crossword.Crossword(size, dict, lettersetHU)
-        self.threadedSolver = solver.TreadedWFCSolver(rootCrossword, self.statusQueue, self.commandQueue)
+        print("reseting")
+        self.threadedSolver.reset()
 
     def setCrosswordSize(self):
         global solver
         try:
-            self.width = int(self.root.ids.width_text.text)
-            self.height = int(self.root.ids.height_text.text)
-            size = (self.width, self.height)
+            self.crosswordWidth = int(self.root.ids.width_text.text)
+            self.crosswordHeight = int(self.root.ids.height_text.text)
+            size = (self.crosswordWidth, self.crosswordHeight)
             print(size)
             self.removeCells()
-            self.root.ids.grid.cols = self.width
-            self.root.ids.grid.rows = self.height
+            self.root.ids.grid.cols = self.crosswordWidth
+            self.root.ids.grid.rows = self.crosswordHeight
             self.addCells()
             rootCrossword = crossword.Crossword(size, dict, lettersetHU)
-            solver = solver.WFCThreadedSolver(rootCrossword)
+            self.threadedSolver.set(rootCrossword)
+            for cell in self.root.ids.grid.children:
+                print(int(cell.pos_x), int(cell.pos_y))
         except:
             pass
 
 if __name__ == "__main__":
     MainApp().run()
-
-"""
-print("Prefilling grid:")
-for y,row in enumerate(constraints):
-    for x,letter in enumerate(row):
-        if letter != " ":
-            wfc.root.wordmatrix.setLetter((x,y), letter.lower())
-            wfc.root.wordmatrix.setMask((x,y))
-
-wfc.currentNode.wordmatrix.printDefined()
-wfc.currentNode.wordmatrix.printAssessment()
-wfc.currentNode.wordmatrix.updateOptions()
-if wfc.currentNode.wordmatrix.isDeadend():
-    print("oh no")
-else:
-    wfc.run()
-    
-"""
-
-
