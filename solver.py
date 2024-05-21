@@ -84,16 +84,31 @@ class WFCSolver(object):
             treestr = u"%s%s%s%s" % (pre, node.x, node.y, node.letter)
             print(treestr.ljust(8))
 
-# Event loop for threaded solver: https://stackoverflow.com/questions/19033818/how-to-call-a-function-on-a-running-python-thread
-# Threaded task just for solver: https://stackoverflow.com/questions/16745507/tkinter-how-to-use-threads-to-preventing-main-event-loop-from-freezing
-
 class TreadedWFCSolver(WFCSolver, Thread):
-    def __init__(self, crossword, queue):
+    def __init__(self, crossword, statusQueue, commandQueue):
         WFCSolver.__init__(self, crossword)
         Thread.__init__(self)
-        self.queue = queue
+        self.statusQueue = statusQueue
+        self.commandQueue = commandQueue
+        self.timeout = 1.0 / 10.0
     
-    def solve(self):
+    def onThread(self, function, *args, **kwargs):
+        self.commandQueue.put((function, args, kwargs))
+    
+    def run(self):
+        while True:
+            try:
+                function, args, kwargs = self.commandQueue.get(timeout=self.timeout)
+                print(function, args, kwargs)
+                function(*args, **kwargs)
+            except queue.Empty:
+                self.idle()
+    
+    def idle(self):
+        # put the code you would have put in the `run` loop here
+        pass
+
+    def _solve(self):
         while not self.currentNode.crossword.isFullyDefined():
             if self.currentNode == self.root and self.currentNode.crossword.isDeadend():
                 print("No more options")
@@ -101,4 +116,7 @@ class TreadedWFCSolver(WFCSolver, Thread):
                 break
             else:
                 self.iterate()
-                self.queue.put(self.currentNode.crossword)
+                self.statusQueue.put(self.currentNode.crossword)
+        
+    def solve(self):
+        self.onThread(self._solve)

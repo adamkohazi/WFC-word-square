@@ -133,12 +133,13 @@ class MainApp(App):
     height = NumericProperty(5)
 
     def build(self):
-        self.queue = Queue()
+        self.statusQueue = Queue()
+        self.commandQueue = Queue()
 
         size = (int(self.width), int(self.height))
         rootCrossword = crossword.Crossword(size, dict, lettersetHU)
         
-        self.threadedSolver = solver.TreadedWFCSolver(rootCrossword, self.queue)
+        self.threadedSolver = solver.TreadedWFCSolver(rootCrossword, self.statusQueue, self.commandQueue)
         self.threadedSolver.start()
 
         self.root = Builder.load_file("main.kv")
@@ -149,7 +150,7 @@ class MainApp(App):
     
     def update(self, dt):
         try:
-            currentCrossword = self.queue.get_nowait()
+            currentCrossword = self.statusQueue.get_nowait()
             # Show current status
             for cell in self.root.ids.grid.children:
                 try:
@@ -181,7 +182,7 @@ class MainApp(App):
     def resetSolver(self):
         size = (int(self.width), int(self.height))
         rootCrossword = crossword.Crossword(size, dict, lettersetHU)
-        self.threadedSolver = solver.TreadedWFCSolver(rootCrossword, self.queue)
+        self.threadedSolver = solver.TreadedWFCSolver(rootCrossword, self.statusQueue, self.commandQueue)
 
     def setCrosswordSize(self):
         global solver
