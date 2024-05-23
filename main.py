@@ -1,5 +1,5 @@
 import crossword
-import solver
+from solver import ThreadedWFCSolver
 import string
 from copy import deepcopy
 from kivy.app import App
@@ -102,13 +102,13 @@ class CrosswordCell(TextInput):
         TextInput.__init__(self, *args, **kwargs)
     
     def insert_text(self, substring, from_undo=False):
-        global solver
         try:
-            x = int(self.pos_x)
-            y = int(self.pos_y)
-            coords = (x, y)
-            solver.root.crossword.setLetter(coords, substring.lower())
-            solver.root.crossword.setMask(coords)
+            coords = (int(self.pos_x), int(self.pos_y))
+            print("modifying cell content:")
+            print(coords)
+            app = App.get_running_app()
+            app.threadedSolver.onThread(app.threadedSolver.root.crossword.setLetter(coords, substring.lower()))
+            app.threadedSolver.onThread(app.threadedSolver.root.crossword.setMask(coords))
         except:
             pass
     
@@ -126,7 +126,7 @@ class CrosswordCell(TextInput):
         if self.text == '-':
             self.background_color = 0,0,0,1
         else:
-            self.background_color = 1, atan(entropy)*pi*2, atan(entropy)*pi*2, 1
+            self.background_color = 1, 1.0/entropy, 1.0/entropy, 1
     
         return self
 
@@ -141,13 +141,14 @@ class MainApp(App):
         size = (int(self.crosswordWidth), int(self.crosswordHeight))
         rootCrossword = crossword.Crossword(size, dict, lettersetHU)
         
-        self.threadedSolver = solver.TreadedWFCSolver(rootCrossword, self.statusQueue, self.commandQueue)
+        self.threadedSolver = ThreadedWFCSolver(rootCrossword, self.statusQueue, self.commandQueue)
         self.threadedSolver.start()
 
         self.root = Builder.load_file("main.kv")
         self.addCells()
 
         Clock.schedule_interval(self.update, 1.0/60.0)
+        print(self.root)
         return self.root
     
     def update(self, dt):
@@ -172,17 +173,21 @@ class MainApp(App):
         self.root.ids.grid.clear_widgets()
     
     def addCells(self):
-        for y in range(self.crosswordWidth):
-            for x in range(self.crosswordHeight):
+        for y in range(self.crosswordHeight):
+            for x in range(self.crosswordWidth):
                 self.root.ids.grid.add_widget(CrosswordCell(pos_x=x, pos_y=y))
 
     def startSolver(self):
         print("starting")
-        self.threadedSolver.solve()
+        self.threadedSolver.onThread(self.threadedSolver.solve)
     
     def resetSolver(self):
         print("reseting")
-        self.threadedSolver.reset()
+        self.threadedSolver.onThread(self.threadedSolver.reset)
+        app = App.get_running_app()
+        app.threadedSolver.onThread(app.threadedSolver.root.crossword.setLetter(coords, substring.lower()))
+        app.threadedSolver.onThread(app.threadedSolver.root.crossword.setMask(coords))
+        self.threadedSolver.onThread(self.threadedSolver.root.crossword.setLetter((0, 0), 'a'))
 
     def setCrosswordSize(self):
         global solver
@@ -196,9 +201,7 @@ class MainApp(App):
             self.root.ids.grid.rows = self.crosswordHeight
             self.addCells()
             rootCrossword = crossword.Crossword(size, dict, lettersetHU)
-            self.threadedSolver.set(rootCrossword)
-            for cell in self.root.ids.grid.children:
-                print(int(cell.pos_x), int(cell.pos_y))
+            self.threadedSolver.onThread(self.threadedSolver.reset, rootCrossword)
         except:
             pass
 
