@@ -7,15 +7,16 @@ import queue
 
 class WFCSolver(object):
     def __init__(self, crossword):
-        super(WFCSolver, self).__init__()
+        self.reset(crossword)
+    
+    def reset(self, crossword=None):
+        if crossword is None:
+            crossword = self.root.crossword
         self.root = history_tree.MoveNode(0, 0, '-',  crossword, parent=None, children=None)
         self.currentNode = self.root
         self.treelevel = 0
         self.i = 0
         self.totalUpdates = 0
-
-    def reset(self):
-        self.root = history_tree.MoveNode(0, 0, '-',  self.root.crossword, parent=None, children=None)
 
     def solve(self):
         """Runs iterations until the crossword is fully solved, or out of options.
@@ -86,61 +87,43 @@ class WFCSolver(object):
             treestr = u"%s%s%s%s" % (pre, node.x, node.y, node.letter)
             print(treestr.ljust(8))
 
-class TreadedWFCSolver(WFCSolver, Thread):
+class ThreadedWFCSolver(WFCSolver, Thread):
     def __init__(self, crossword, statusQueue, commandQueue):
-        WFCSolver.__init__(self, crossword)
-        Thread.__init__(self)
         self.statusQueue = statusQueue
         self.commandQueue = commandQueue
         self.timeout = 1.0 / 10.0
+        WFCSolver.__init__(self, crossword)
+        Thread.__init__(self)
+    
+    def updateStatus(self):
+        # Remove obsolete unused statuses
+        while not self.statusQueue.empty():
+            self.statusQueue.get_nowait()
+        self.statusQueue.put(self.currentNode.crossword)
     
     def onThread(self, function, *args, **kwargs):
+        print("putting command to queue:")
+        print(function, args, kwargs)
         self.commandQueue.put((function, args, kwargs))
     
     def run(self):
         while True:
             try:
                 function, args, kwargs = self.commandQueue.get(timeout=self.timeout)
+                print("executing:")
                 print(function, args, kwargs)
                 function(*args, **kwargs)
             except queue.Empty:
                 self.idle()
     
     def idle(self):
-        # put the code you would have put in the `run` loop here
-        pass
+        # Small sleep, so thread can be interrupted if needed
+        time.sleep(0.001)
 
-    def _solve(self):
-        while not self.currentNode.crossword.isFullyDefined():
-            if self.currentNode == self.root and self.currentNode.crossword.isDeadend():
-                print("No more options")
-                #print(self.currentNode.crossword.blacklist)
-                break
-            else:
-                self.iterate()
-                self.statusQueue.put(self.currentNode.crossword)
-        
-    def solve(self):
-        self.onThread(self._solve)
-    
-    def _reset(self):
-        self.root = history_tree.MoveNode(0, 0, '-',  self.root.crossword, parent=None, children=None)
-        self.currentNode = self.root
-        self.treelevel = 0
-        self.i = 0
-        self.totalUpdates = 0
-        self.statusQueue.put(self.currentNode.crossword)
-
-    def _set(self, crossword):
-        self.root = history_tree.MoveNode(0, 0, '-',  crossword, parent=None, children=None)
-        self.currentNode = self.root
-        self.treelevel = 0
-        self.i = 0
-        self.totalUpdates = 0
+    def reset(self, crossword=None):
+        WFCSolver.reset(self, crossword)
         self.statusQueue.put(self.currentNode.crossword)
     
-    def reset(self):
-        self.onThread(self._reset)
-
-    def set(self, crossword):
-        self.onThread(self._set, crossword)
+    def iterate(self):
+        WFCSolver.iterate(self)
+        self.statusQueue.put(self.currentNode.crossword)
