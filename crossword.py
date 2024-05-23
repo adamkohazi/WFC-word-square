@@ -27,7 +27,8 @@ class Crossword(object):
             letterset (string): All valid letters concatenated.
         """
         self.width, self.height = size
-        self.dictionary = {}
+        self.letterset = letterset
+        self.dictionary = {}  
         for length in range(max(size)):
             self.dictionary[length+1] = []
         for word in dictionary:
@@ -43,6 +44,16 @@ class Crossword(object):
 
         # Perform an initial update based on constraints from dictionary TODO
         #self.updateOptions()
+    
+    def reset(self):
+        # Reset blacklist
+        self.blacklist = [[[] for w in range(self.width)] for h in range(self.height)]
+        # Reset options if cell is not masked
+        for y in range(self.height):
+            for x in range(self.width):
+                coords = (x, y)
+                if not self.getMask(coords):
+                    self.setOptions([coords], [dict.fromkeys(self.letterset, 9999)])
     
     def findHorizontalWordLetters(self, coords):
         """Finds the coordinates for each letter of a horizontal word.

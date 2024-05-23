@@ -12,6 +12,7 @@ class WFCSolver(object):
     def reset(self, crossword=None):
         if crossword is None:
             crossword = self.root.crossword
+        crossword.reset()
         self.root = history_tree.MoveNode(0, 0, '-',  crossword, parent=None, children=None)
         self.currentNode = self.root
         self.treelevel = 0
@@ -94,6 +95,7 @@ class ThreadedWFCSolver(WFCSolver, Thread):
         self.timeout = 1.0 / 10.0
         WFCSolver.__init__(self, crossword)
         Thread.__init__(self)
+        self.daemon = True
     
     def updateStatus(self):
         # Remove obsolete unused statuses
@@ -102,15 +104,12 @@ class ThreadedWFCSolver(WFCSolver, Thread):
         self.statusQueue.put(self.currentNode.crossword)
     
     def onThread(self, function, *args, **kwargs):
-        print("putting command to queue:")
-        print(function, args, kwargs)
         self.commandQueue.put((function, args, kwargs))
     
     def run(self):
         while True:
             try:
                 function, args, kwargs = self.commandQueue.get(timeout=self.timeout)
-                print("executing:")
                 print(function, args, kwargs)
                 function(*args, **kwargs)
             except queue.Empty:
@@ -122,8 +121,8 @@ class ThreadedWFCSolver(WFCSolver, Thread):
 
     def reset(self, crossword=None):
         WFCSolver.reset(self, crossword)
-        self.statusQueue.put(self.currentNode.crossword)
+        self.updateStatus()
     
     def iterate(self):
         WFCSolver.iterate(self)
-        self.statusQueue.put(self.currentNode.crossword)
+        self.updateStatus()

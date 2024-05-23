@@ -102,13 +102,15 @@ class CrosswordCell(TextInput):
         TextInput.__init__(self, *args, **kwargs)
     
     def insert_text(self, substring, from_undo=False):
+        print("ajjaj")
         try:
             coords = (int(self.pos_x), int(self.pos_y))
             print("modifying cell content:")
             print(coords)
             app = App.get_running_app()
-            app.threadedSolver.onThread(app.threadedSolver.root.crossword.setLetter(coords, substring.lower()))
-            app.threadedSolver.onThread(app.threadedSolver.root.crossword.setMask(coords))
+            app.threadedSolver.onThread(app.threadedSolver.root.crossword.setLetter, coords, substring.lower())
+            app.threadedSolver.onThread(app.threadedSolver.root.crossword.setMask, coords)
+            app.threadedSolver.onThread(app.threadedSolver.updateStatus)
         except:
             pass
     
@@ -126,7 +128,10 @@ class CrosswordCell(TextInput):
         if self.text == '-':
             self.background_color = 0,0,0,1
         else:
-            self.background_color = 1, 1.0/entropy, 1.0/entropy, 1
+            if masked:
+                self.background_color = 1,1,0.5,1
+            else:
+                self.background_color = 1, 1.0/entropy, 1.0/entropy, 1
     
         return self
 
@@ -163,9 +168,10 @@ class MainApp(App):
                     options = currentCrossword.getOptions(coords)
                     entropy = currentCrossword.shannonEntropy(coords)
                     cell.update(defined, masked, options, entropy)
+                    print("updating: ", coords)
                 except:
                     pass
-            
+            currentCrossword.printDefined()
         except Empty:
             pass
 
@@ -181,13 +187,12 @@ class MainApp(App):
         print("starting")
         self.threadedSolver.onThread(self.threadedSolver.solve)
     
+    def setLetter(self):
+        self.threadedSolver.onThread(self.threadedSolver.root.crossword.setLetter,(0, 0), 'a')
+
     def resetSolver(self):
         print("reseting")
         self.threadedSolver.onThread(self.threadedSolver.reset)
-        app = App.get_running_app()
-        app.threadedSolver.onThread(app.threadedSolver.root.crossword.setLetter(coords, substring.lower()))
-        app.threadedSolver.onThread(app.threadedSolver.root.crossword.setMask(coords))
-        self.threadedSolver.onThread(self.threadedSolver.root.crossword.setLetter((0, 0), 'a'))
 
     def setCrosswordSize(self):
         global solver
