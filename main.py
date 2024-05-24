@@ -17,7 +17,10 @@ from math import atan, pi
 from time import sleep
 from threading import Thread
 from queue import Queue, Empty
+from kivy.core.window import Window
 
+
+from components.cell.cell import Cell
 
 # For testing purposes
 import random
@@ -102,7 +105,6 @@ class CrosswordCell(TextInput):
         TextInput.__init__(self, *args, **kwargs)
     
     def insert_text(self, substring, from_undo=False):
-        print("ajjaj")
         try:
             coords = (int(self.pos_x), int(self.pos_y))
             print("modifying cell content:")
@@ -113,12 +115,6 @@ class CrosswordCell(TextInput):
             app.threadedSolver.onThread(app.threadedSolver.updateStatus)
         except:
             pass
-    
-    def lock(self):
-        self.readonly = True
-    
-    def unlock(self):
-        self.readonly = False
 
     def update(self, defined, masked, options, entropy):
         if defined:
@@ -153,9 +149,36 @@ class MainApp(App):
         self.addCells()
 
         Clock.schedule_interval(self.update, 1.0/60.0)
-        print(self.root)
-        return self.root
     
+        self._keyboard = Window.request_keyboard(self._keyboard_closed, self)
+        self._keyboard.bind(on_key_down=self._on_keyboard_down)
+
+        return self.root
+
+    def _keyboard_closed(self):
+        self._keyboard.unbind(on_key_down=self._on_keyboard_down)
+        self._keyboard = None
+
+    def _on_keyboard_down(self, keyboard, keycode, text, modifiers):
+        if keycode[1] == 'up':
+            pass
+        elif keycode[1] == 'down':
+            pass
+        elif keycode[1] == 'left':
+            pass
+        elif keycode[1] == 'right':
+            pass
+        elif keycode[1] == 'backspace':
+            pass
+        elif keycode[1] == 'del':
+            pass
+        elif keycode[1] == 'space':
+            pass
+        
+        print(keycode[1])
+
+        return True
+
     def update(self, dt):
         try:
             currentCrossword = self.statusQueue.get_nowait()
@@ -175,20 +198,9 @@ class MainApp(App):
         except Empty:
             pass
 
-    def removeCells(self):
-        self.root.ids.grid.clear_widgets()
-    
-    def addCells(self):
-        for y in range(self.crosswordHeight):
-            for x in range(self.crosswordWidth):
-                self.root.ids.grid.add_widget(CrosswordCell(pos_x=x, pos_y=y))
-
     def startSolver(self):
         print("starting")
         self.threadedSolver.onThread(self.threadedSolver.solve)
-    
-    def setLetter(self):
-        self.threadedSolver.onThread(self.threadedSolver.root.crossword.setLetter,(0, 0), 'a')
 
     def resetSolver(self):
         print("reseting")
@@ -209,6 +221,14 @@ class MainApp(App):
             self.threadedSolver.onThread(self.threadedSolver.reset, rootCrossword)
         except:
             pass
+    
+    def removeCells(self):
+        self.root.ids.grid.clear_widgets()
+    
+    def addCells(self):
+        for y in range(self.crosswordHeight):
+            for x in range(self.crosswordWidth):
+                self.root.ids.grid.add_widget(Cell(pos_x=x, pos_y=y))
 
 if __name__ == "__main__":
     MainApp().run()

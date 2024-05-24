@@ -1,0 +1,26 @@
+#:kivy 2.3.0
+
+<Cell>
+    main_letter: main_letter
+    letter_options: letter_options
+
+    group: 'cell'
+
+    canvas:
+        Color:
+            rgba: 0.7,1,1,1
+
+        Rectangle:
+            size: self.size
+            pos: self.pos
+
+    Label:
+        id: main_letter
+        font_size: 0.8 * self.size[1]
+        halign: 'center'
+        valign: 'middle'
+    
+    Label:
+        id: letter_options
+        font_size: 0.2 * self.size[1]
+        halign: 'left'
