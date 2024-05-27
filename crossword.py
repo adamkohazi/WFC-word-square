@@ -55,6 +55,17 @@ class Crossword(object):
                 if not self.getMask(coords):
                     self.setOptions([coords], [dict.fromkeys(self.letterset, 9999)])
     
+    def resetCell(self, coords):
+        """Resets a single cell. Mask is disabled, blacklist emptied, every letter option set.
+        
+        Arguments:
+            coords (tuple): Coorinates of the cell to reset.
+        """
+        self.setMask(coords, False)
+        x, y = coords
+        self.blacklist[y][x] = []
+        self.setOptions([coords], [dict.fromkeys(self.letterset, 9999)])
+    
     def findHorizontalWordLetters(self, coords):
         """Finds the coordinates for each letter of a horizontal word.
 
@@ -184,10 +195,11 @@ class Crossword(object):
             count (int): Count of given letter. If 0, letter is considered invalid for this position.
         """
         x, y = coords
-        if count == 0:
-            del self.options[y][x][letter]
-        else:
-            self.options[y][x][letter] = count
+        if not self.getMask(coords):
+            if count == 0:
+                del self.options[y][x][letter]
+            else:
+                self.options[y][x][letter] = count
     
     def getBlacklist(self, coords):
         """Lists blacklisted letters for a single cell.
@@ -606,6 +618,15 @@ class Crossword(object):
                     defined[y][x] = next(iter(self.getOptions((x,y))))
         self.printMatrix(defined)
     
+    def printEntropies(self):
+        """Prints entropies.
+        """
+        entropies = [[0.0 for w in range(self.width)] for h in range(self.height)]
+        for y in range(self.height):
+            for x in range(self.width):
+                entropies[y][x] = self.shannonEntropy((x,y))
+        self.printMatrix(entropies)
+
     def printMatrix(self, matrix, width=3):
         """Prints any value into the console, in a nice matrix-like way
 

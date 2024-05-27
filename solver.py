@@ -80,6 +80,7 @@ class WFCSolver(object):
         
         # Debug printing
         self.currentNode.crossword.printDefined()
+        #self.currentNode.crossword.printEntropies()
         #self.print_tree()
         #self.currentNode.crossword.print_options()
 
@@ -96,6 +97,8 @@ class ThreadedWFCSolver(WFCSolver, Thread):
         WFCSolver.__init__(self, crossword)
         Thread.__init__(self)
         self.daemon = True
+        
+        self.updateStatus()
     
     def updateStatus(self):
         # Remove obsolete unused statuses
