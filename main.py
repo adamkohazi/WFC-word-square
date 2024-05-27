@@ -10,6 +10,7 @@ from kivy.uix.screenmanager import ScreenManager, Screen
 from kivy.properties import NumericProperty
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.textinput import TextInput
+from kivy.uix.checkbox import CheckBox
 from kivy.uix.button import Button
 from kivy.uix.label import Label
 from kivy.clock import Clock
@@ -97,87 +98,87 @@ class NumericInput(TextInput):
         except:
             pass
 
-class CrosswordCell(TextInput):
-    pos_x = NumericProperty()
-    pos_y = NumericProperty()
-
-    def __init__(self, *args, **kwargs):
-        TextInput.__init__(self, *args, **kwargs)
-    
-    def insert_text(self, substring, from_undo=False):
-        try:
-            coords = (int(self.pos_x), int(self.pos_y))
-            print("modifying cell content:")
-            print(coords)
-            app = App.get_running_app()
-            app.threadedSolver.onThread(app.threadedSolver.root.crossword.setLetter, coords, substring.lower())
-            app.threadedSolver.onThread(app.threadedSolver.root.crossword.setMask, coords)
-            app.threadedSolver.onThread(app.threadedSolver.updateStatus)
-        except:
-            pass
-
-    def update(self, defined, masked, options, entropy):
-        if defined:
-            self.text = next(iter(options))
-        else:
-            self.text = ''
-        if self.text == '-':
-            self.background_color = 0,0,0,1
-        else:
-            if masked:
-                self.background_color = 1,1,0.5,1
-            else:
-                self.background_color = 1, 1.0/entropy, 1.0/entropy, 1
-    
-        return self
-
 class MainApp(App):
-    crosswordWidth = NumericProperty(5)
-    crosswordHeight = NumericProperty(5)
-
     def build(self):
+        self.root = Builder.load_file("main.kv")
+
         self.statusQueue = Queue()
         self.commandQueue = Queue()
 
-        size = (int(self.crosswordWidth), int(self.crosswordHeight))
+        size = (int(self.root.ids.width_text.text), int(self.root.ids.height_text.text))
         rootCrossword = crossword.Crossword(size, dict, lettersetHU)
-        
         self.threadedSolver = ThreadedWFCSolver(rootCrossword, self.statusQueue, self.commandQueue)
         self.threadedSolver.start()
-
-        self.root = Builder.load_file("main.kv")
-        self.addCells()
-
-        Clock.schedule_interval(self.update, 1.0/60.0)
     
-        self._keyboard = Window.request_keyboard(self._keyboard_closed, self)
+        self._keyboard = Window.request_keyboard(self._keyboard_closed, None)
         self._keyboard.bind(on_key_down=self._on_keyboard_down)
 
+        Clock.schedule_interval(self.update, 1.0/60.0)
+
         return self.root
+
+    def on_start(self):
+        self.setCrosswordSize()
 
     def _keyboard_closed(self):
         self._keyboard.unbind(on_key_down=self._on_keyboard_down)
         self._keyboard = None
 
     def _on_keyboard_down(self, keyboard, keycode, text, modifiers):
-        if keycode[1] == 'up':
-            pass
-        elif keycode[1] == 'down':
-            pass
-        elif keycode[1] == 'left':
-            pass
-        elif keycode[1] == 'right':
-            pass
-        elif keycode[1] == 'backspace':
-            pass
-        elif keycode[1] == 'del':
-            pass
-        elif keycode[1] == 'space':
-            pass
         
-        print(keycode[1])
+        if keycode[1] == 'up':
+            self.moveActiveCell((0, -1))
+        elif keycode[1] == 'down':
+            self.moveActiveCell((0, 1))
+        elif keycode[1] == 'left':
+            self.moveActiveCell((-1, 0))
+        elif keycode[1] == 'right':
+            self.moveActiveCell((1, 0))
+
+        elif keycode[1] == 'backspace' or keycode[1] == 'delete' or keycode[1] == 'space':
+            # Find active cell:
+            coords = None
+            for cell in self.root.ids.grid.children:
+                if cell.state == "down":
+                    coords = (int(cell.pos_x), int(cell.pos_y))
+                    break
+
+            self.threadedSolver.onThread(self.threadedSolver.root.crossword.resetCell, coords)
+            self.threadedSolver.onThread(self.threadedSolver.updateStatus)
+        
+        elif True:
+            # Find active cell:
+            coords = None
+            for cell in self.root.ids.grid.children:
+                if cell.state == "down":
+                    coords = (int(cell.pos_x), int(cell.pos_y))
+                    break
+
+            # Set letter and mask
+            if coords is not None:
+                self.threadedSolver.onThread(self.threadedSolver.root.crossword.setLetter, coords, keycode[1])
+                self.threadedSolver.onThread(self.threadedSolver.root.crossword.setMask, coords)
+                self.threadedSolver.onThread(self.threadedSolver.updateStatus)
 
         return True
+
+    def moveActiveCell(self, direction):
+        # Find active cell:
+        coords = None
+        for cell in self.root.ids.grid.children:
+            if cell.state == "down":
+                coords = (int(cell.pos_x), int(cell.pos_y))
+                cell.state = "normal"
+        
+        newCoords = (max(0, min(coords[0] + direction[0], int(self.root.ids.width_text.text)-1)),
+                     max(0, min(coords[1] + direction[1], int(self.root.ids.height_text.text)-1)))
+        
+        print(newCoords)
+
+        for cell in self.root.ids.grid.children:
+            if (int(cell.pos_x), int(cell.pos_y)) == newCoords:
+                print("changing active cell")
+                cell.state = "down"
 
     def update(self, dt):
         try:
@@ -198,24 +199,28 @@ class MainApp(App):
         except Empty:
             pass
 
+    def updateOptions(self):
+        print("Updating")
+        self.threadedSolver.onThread(self.threadedSolver.root.crossword.updateOptions)
+        self.threadedSolver.onThread(self.threadedSolver.updateStatus)
+
     def startSolver(self):
         print("starting")
         self.threadedSolver.onThread(self.threadedSolver.solve)
+    
+    def stopSolver(self):
+        print("Stopping")
+        self.threadedSolver.onThread(self.threadedSolver.stop)
 
     def resetSolver(self):
         print("reseting")
         self.threadedSolver.onThread(self.threadedSolver.reset)
 
     def setCrosswordSize(self):
-        global solver
         try:
-            self.crosswordWidth = int(self.root.ids.width_text.text)
-            self.crosswordHeight = int(self.root.ids.height_text.text)
-            size = (self.crosswordWidth, self.crosswordHeight)
+            size = (int(self.root.ids.width_text.text), int(self.root.ids.height_text.text))
             print(size)
             self.removeCells()
-            self.root.ids.grid.cols = self.crosswordWidth
-            self.root.ids.grid.rows = self.crosswordHeight
             self.addCells()
             rootCrossword = crossword.Crossword(size, dict, lettersetHU)
             self.threadedSolver.onThread(self.threadedSolver.reset, rootCrossword)
@@ -226,9 +231,9 @@ class MainApp(App):
         self.root.ids.grid.clear_widgets()
     
     def addCells(self):
-        for y in range(self.crosswordHeight):
-            for x in range(self.crosswordWidth):
-                self.root.ids.grid.add_widget(Cell(pos_x=x, pos_y=y))
+        for y in range(int(self.root.ids.height_text.text)):
+            for x in range(int(self.root.ids.width_text.text)):
+                self.root.ids.grid.add_widget(Cell(x, y))
 
 if __name__ == "__main__":
     MainApp().run()

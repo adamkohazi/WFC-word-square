@@ -2,28 +2,6 @@
 
 #:include components/cell/cell.kv
 
-<CrosswordCell>
-    cell_options: cell_options
-
-    multiline: False
-    halign: "center"
-    font_size: 0.8 * self.size[1]
-    padding: 0
-    border: 2, 2, 2, 2
-
-    background_color: 1, 1, 1, 1
-    cursor_color: self.background_color
-
-    Label:
-        id: cell_options
-        font_size: 0.2 * self.parent.font_size
-        text_size: self.size
-        halign: 'left'
-        valign: 'top'
-    
-    Label:
-        id: cell_options
-
 BoxLayout:
     orientation: "vertical"
 
@@ -32,8 +10,8 @@ BoxLayout:
 
         GridLayout:
             id: grid
-            cols: 5
-            rows: 5
+            cols: int(height_text.text)
+            rows: int(width_text.text)
             height: self.minimum_height
             width: self.minimum_width
             size_hint: None, None
@@ -119,12 +97,41 @@ BoxLayout:
             Label:
             	size_hint_y: None
             	height: 30
+            	text: "Visuals"
+            StackLayout:
+            	size_hint_y: None
+            	height: 30
+                CheckBox:
+            		size_hint_x: None
+            		width: 40
+            	Label:
+            		size_hint_x: None
+            		width: 80
+                	text: "Show options"
+            StackLayout:
+            	size_hint_y: None
+            	height: 30
+                CheckBox:
+            		size_hint_x: None
+            		width: 40
+            	Label:
+            		size_hint_x: None
+            		width: 80
+                	text: "Show word count"
+        
+        StackLayout:
+            size_hint_x: None
+            orientation: "tb-lr"
+            width: 200
+            Label:
+            	size_hint_y: None
+            	height: 30
             	text: "Analysis"
             Button:
                 size_hint_y: None
             	height: 30
-            	text: "SetLetter"
-                on_press: app.setLetter()
+            	text: "Update options"
+                on_press: app.updateOptions()
             Button:
                 size_hint_y: None
             	height: 30

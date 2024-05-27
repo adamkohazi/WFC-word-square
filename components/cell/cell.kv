@@ -6,21 +6,43 @@
 
     group: 'cell'
 
-    canvas:
+    on_state: self.change_state()
+
+    canvas.before:
         Color:
-            rgba: 0.7,1,1,1
+            rgba: 0,0,0,1
 
         Rectangle:
             size: self.size
             pos: self.pos
 
+        Color:
+            rgba: 1,1,1,1
+
+        Rectangle:
+            size: self.size[0]-2, self.size[1]-2
+            pos: self.pos
+
     Label:
         id: main_letter
+        
+        #size_hint: 1, 1
+        pos_hint:{"center_x":0.5,"center_y":0.5}
+        
+        color: 0,0,0,1
         font_size: 0.8 * self.size[1]
         halign: 'center'
         valign: 'middle'
     
     Label:
         id: letter_options
+
+        #size_hint: 1, 1
+        pos_hint:{"center_x":0.5,"center_y":0.5}
+
+        text_size: root.width, None
+
+        color: 0,0,0,1
         font_size: 0.2 * self.size[1]
         halign: 'left'
+        valign: 'top'
