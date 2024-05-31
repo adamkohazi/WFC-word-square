@@ -22,6 +22,7 @@ from kivy.core.window import Window
 
 
 from components.cell.cell import Cell
+from components.integer_up_down.integer_up_down import IntegerUpDown
 
 # For testing purposes
 import random
@@ -68,35 +69,8 @@ def findLetterset(dictionary):
 
 # Loading words to a dictionary for generation
 dict = get_dictionary_word_list("dictionary_HU.txt")
-size = (5,5)
+size = (10,10)
 dict = optimize_dictionary(dict, size, lettersetHU)
-
-class NumericInput(TextInput):
-    min_value = NumericProperty()
-    max_value = NumericProperty()
-    def __init__(self, *args, **kwargs):
-        TextInput.__init__(self, *args, **kwargs)
-        self.input_filter = 'int'
-        self.multiline = False
-
-    def insert_text(self, string, from_undo=False):
-        new_text = self.text + string
-        try:
-            self.text = str(max(min(self.max_value, int(new_text)), self.min_value))
-        except:
-            pass
-    
-    def increment(self, amount=1):
-        try:
-            self.text = str(min(int(self.text) + amount, self.max_value))
-        except:
-            pass
-    
-    def decrement(self, amount=1):
-        try:
-            self.text = str(max(int(self.text) - amount, self.min_value))
-        except:
-            pass
 
 class MainApp(App):
     def build(self):
@@ -105,7 +79,7 @@ class MainApp(App):
         self.statusQueue = Queue()
         self.commandQueue = Queue()
 
-        size = (int(self.root.ids.width_text.text), int(self.root.ids.height_text.text))
+        size = (10, 10)
         rootCrossword = crossword.Crossword(size, dict, lettersetHU)
         self.threadedSolver = ThreadedWFCSolver(rootCrossword, self.statusQueue, self.commandQueue)
         self.threadedSolver.start()
@@ -113,12 +87,14 @@ class MainApp(App):
         self._keyboard = Window.request_keyboard(self._keyboard_closed, None)
         self._keyboard.bind(on_key_down=self._on_keyboard_down)
 
-        Clock.schedule_interval(self.update, 1.0/60.0)
+        # Display crossword when UI is loaded
+        Clock.schedule_once(self.start_display)
 
         return self.root
 
-    def on_start(self):
+    def start_display(self, *args):
         self.setCrosswordSize()
+        Clock.schedule_interval(self.update, 1.0/10.0)
 
     def _keyboard_closed(self):
         self._keyboard.unbind(on_key_down=self._on_keyboard_down)
@@ -156,7 +132,7 @@ class MainApp(App):
 
             # Set letter and mask
             if coords is not None:
-                self.threadedSolver.onThread(self.threadedSolver.root.crossword.setLetter, coords, keycode[1])
+                self.threadedSolver.onThread(self.threadedSolver.root.crossword.setLetter, coords, text)
                 self.threadedSolver.onThread(self.threadedSolver.root.crossword.setMask, coords)
                 self.threadedSolver.onThread(self.threadedSolver.updateStatus)
 
@@ -192,7 +168,6 @@ class MainApp(App):
                     options = currentCrossword.getOptions(coords)
                     entropy = currentCrossword.shannonEntropy(coords)
                     cell.update(defined, masked, options, entropy)
-                    print("updating: ", coords)
                 except:
                     pass
             currentCrossword.printDefined()
@@ -217,22 +192,20 @@ class MainApp(App):
         self.threadedSolver.onThread(self.threadedSolver.reset)
 
     def setCrosswordSize(self):
-        try:
-            size = (int(self.root.ids.width_text.text), int(self.root.ids.height_text.text))
-            print(size)
-            self.removeCells()
-            self.addCells()
-            rootCrossword = crossword.Crossword(size, dict, lettersetHU)
-            self.threadedSolver.onThread(self.threadedSolver.reset, rootCrossword)
-        except:
-            pass
+        size = (self.root.ids.width_input.current_value, self.root.ids.height_input.current_value)
+        self.removeCells()
+        self.root.ids.grid.cols = self.root.ids.width_input.current_value
+        self.root.ids.grid.rows = self.root.ids.height_input.current_value
+        self.addCells()
+        rootCrossword = crossword.Crossword(size, dict, lettersetHU)
+        self.threadedSolver.onThread(self.threadedSolver.reset, rootCrossword)
     
     def removeCells(self):
         self.root.ids.grid.clear_widgets()
     
     def addCells(self):
-        for y in range(int(self.root.ids.height_text.text)):
-            for x in range(int(self.root.ids.width_text.text)):
+        for y in range(self.root.ids.height_input.current_value):
+            for x in range(self.root.ids.width_input.current_value):
                 self.root.ids.grid.add_widget(Cell(x, y))
 
 if __name__ == "__main__":
