@@ -1,6 +1,7 @@
 #:kivy 2.3.0
 
 #:include components/cell/cell.kv
+#:include components/integer_up_down/integer_up_down.kv
 
 BoxLayout:
     orientation: "vertical"
@@ -10,8 +11,8 @@ BoxLayout:
 
         GridLayout:
             id: grid
-            cols: int(height_text.text)
-            rows: int(width_text.text)
+            cols: 10
+            rows: 10
             height: self.minimum_height
             width: self.minimum_width
             size_hint: None, None
@@ -41,26 +42,12 @@ BoxLayout:
             		size_hint_x: None
             		width: 80
                 	text: "Width: "
-                Button:
-            		size_hint_x: None
-            		width: 30
-                	text: "-"
-                    on_press: width_text.decrement()
-            	NumericInput:
-                    id: width_text
+                IntegerUpDown:
+                    id: width_input
+                    min: 1
+                    max: 20
                     size_hint_x: None
-            		width: 50
-            		text: "5"
-                    halign: "center"
-                    min_value : 1
-                    max_value : 20
-                    hint_text : '{}-{}'.format(self.min_value, self.max_value)
-                    on_text: app.setCrosswordSize()
-                Button:
-            		size_hint_x: None
-            		width: 30
-                	text: "+"
-                    on_press: width_text.increment()
+                    on_current_value: app.setCrosswordSize()
 
             StackLayout:
             	size_hint_y: None
@@ -69,26 +56,12 @@ BoxLayout:
             		size_hint_x: None
             		width: 80
                 	text: "Height: "
-                Button:
-            		size_hint_x: None
-            		width: 30
-                	text: "-"
-                    on_press: height_text.decrement()
-            	NumericInput:
-                    id: height_text
+                IntegerUpDown:
+                    id: height_input
+                    min: 1
+                    max: 20
                     size_hint_x: None
-            		width: 50
-            		text: "5"
-                    halign: "center"
-                    min_value : 1
-                    max_value : 20
-                    hint_text : '{}-{}'.format(self.min_value, self.max_value)
-                    on_text: app.setCrosswordSize()
-                Button:
-            		size_hint_x: None
-            		width: 30
-                	text: "+"
-                    on_press: height_text.increment()
+                    on_current_value: app.setCrosswordSize()
 
         StackLayout:
             size_hint_x: None

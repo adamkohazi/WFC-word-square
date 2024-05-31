@@ -1,0 +1,24 @@
+<IntegerUpDown>
+    
+    Button:
+        size_hint_x: None
+        width: self.height
+        text: "-"
+        on_press: self.parent.decrement()
+        
+    TextInput:
+        id: value_text
+
+        multiline: False
+        input_filter: 'int'
+    
+        halign: "center"
+        text: str(self.parent.current_value)
+
+        size_hint_x: None
+        width: 40
+    Button:
+        size_hint_x: None
+        width: self.height
+        text: "+"
+        on_press: self.parent.increment()
