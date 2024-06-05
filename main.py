@@ -118,9 +118,9 @@ class MainApp(App):
                 if cell.state == "down":
                     coords = (int(cell.pos_x), int(cell.pos_y))
                     break
-
-            self.threadedSolver.onThread(self.threadedSolver.root.crossword.resetCell, coords)
-            self.threadedSolver.onThread(self.threadedSolver.updateStatus)
+            if coords is not None:
+                self.threadedSolver.onThread(self.threadedSolver.root.crossword.resetCell, coords)
+                self.threadedSolver.onThread(self.threadedSolver.updateStatus)
         
         elif True:
             # Find active cell:
@@ -146,8 +146,8 @@ class MainApp(App):
                 coords = (int(cell.pos_x), int(cell.pos_y))
                 cell.state = "normal"
         
-        newCoords = (max(0, min(coords[0] + direction[0], int(self.root.ids.width_text.text)-1)),
-                     max(0, min(coords[1] + direction[1], int(self.root.ids.height_text.text)-1)))
+        newCoords = (max(0, min(coords[0] + direction[0], self.root.ids.width_input.current_value-1)),
+                     max(0, min(coords[1] + direction[1], self.root.ids.height_input.current_value-1)))
         
         print(newCoords)
 

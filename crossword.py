@@ -4,7 +4,8 @@ import random
 import time
 
 class Cell(object):
-    pass
+    def __init__(self):
+        pass
 
 class Crossword(object):
     """Class for keeping track of and interacting with a rectangular crossword grid.

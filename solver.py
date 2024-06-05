@@ -27,15 +27,11 @@ class WFCSolver(object):
         while not self.currentNode.crossword.isFullyDefined():
             if self.currentNode == self.root and self.currentNode.crossword.isDeadend():
                 print("No more options")
-                #print(self.currentNode.crossword.blacklist)
                 break
             else:
                 self.iterate()
         
         endTime = time.perf_counter()
-        #self.print_tree()
-        #self.currentNode.crossword.printOptions()
-        #self.currentNode.crossword.printDefined()
         print("%d updates in total." % self.totalUpdates)
         print("Total time: %.2gs" % (endTime-startTime))
     
@@ -121,6 +117,28 @@ class ThreadedWFCSolver(WFCSolver, Thread):
     def idle(self):
         # Small sleep, so thread can be interrupted if needed
         time.sleep(0.001)
+    
+    def solve(self):
+        """Runs iterations until the crossword is fully solved, or out of options.
+        """
+
+        while not self.currentNode.crossword.isFullyDefined():
+            try:
+                function, args, kwargs = self.commandQueue.get_nowait()
+                if function == self.stop:
+                    print("stop detected")
+                    break
+                else:
+                    print("can't stop, won't stop")
+            except queue.Empty:
+                if self.currentNode == self.root and self.currentNode.crossword.isDeadend():
+                    print("No more options")
+                    break
+                else:
+                    self.iterate()
+
+    def stop(self):
+        pass
 
     def reset(self, crossword=None):
         WFCSolver.reset(self, crossword)
