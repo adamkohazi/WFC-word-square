@@ -99,7 +99,7 @@ BoxLayout:
             Label:
             	size_hint_y: None
             	height: 30
-            	text: "Analysis"
+            	text: "Status"
             Button:
                 size_hint_y: None
             	height: 30
@@ -108,8 +108,9 @@ BoxLayout:
             Button:
                 size_hint_y: None
             	height: 30
-            	text: "Ipsum"
-
+            	text: "Reset"
+                on_press: app.resetSolver()
+                
         StackLayout:
             size_hint_x: None
             orientation: "tb-lr"
@@ -126,6 +127,7 @@ BoxLayout:
             Button:
                 size_hint_y: None
             	height: 30
-            	text: "Reset"
-                on_press: app.resetSolver()
+            	text: "Stop"
+                on_press: app.stopSolver()
+
             
