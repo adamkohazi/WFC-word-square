@@ -4,6 +4,7 @@ from copy import deepcopy
 import time
 from threading import Thread
 import queue
+from dictionary import Dictionary
 
 class WFCSolver(object):
     def __init__(self, crossword):
