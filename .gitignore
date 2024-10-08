@@ -1,4 +1,3 @@
 *.txt
 dict_converter.py
-dictionary.py
 __pycache__/

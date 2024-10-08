@@ -2,6 +2,7 @@ import re
 import math
 import random
 import time
+import dictionary
 
 class Cell(object):
     def __init__(self):
@@ -19,25 +20,18 @@ class Crossword(object):
         mask (2D list of bool): Indicates if certain cells should be excluded from the word validity checks.
     """
 
-    def __init__(self, size, dictionary, letterset):
+    def __init__(self, size, dictionary):
         """Initializes a new crossword instance.
 
         Arguments:
             size (tuple): Width and height of the grid
             dictionary (dict): Valid words that can be used to fill the grid.
-            letterset (string): All valid letters concatenated.
         """
         self.width, self.height = size
-        self.letterset = letterset
-        self.dictionary = {}  
-        for length in range(max(size)):
-            self.dictionary[length+1] = []
-        for word in dictionary:
-            if len(word) <= max(size):
-                self.dictionary[len(word)].append(word)
+        self.dictionary = dictionary
 
         # Initially every letter is an option for every field
-        self.options = [[dict.fromkeys(letterset, 9999) for w in range(self.width)] for h in range(self.height)]
+        self.options = [[dict.fromkeys(self.dictionary.validLetters, 9999) for w in range(self.width)] for h in range(self.height)]
         # Start with a clean blacklist
         self.blacklist = [[[] for w in range(self.width)] for h in range(self.height)]
         # Clean mask
@@ -54,7 +48,7 @@ class Crossword(object):
             for x in range(self.width):
                 coords = (x, y)
                 if not self.getMask(coords):
-                    self.setOptions([coords], [dict.fromkeys(self.letterset, 9999)])
+                    self.setOptions([coords], [dict.fromkeys(self.dictionary.validLetters, 9999)])
     
     def resetCell(self, coords):
         """Resets a single cell. Mask is disabled, blacklist emptied, every letter option set.
@@ -65,7 +59,7 @@ class Crossword(object):
         self.setMask(coords, False)
         x, y = coords
         self.blacklist[y][x] = []
-        self.setOptions([coords], [dict.fromkeys(self.letterset, 9999)])
+        self.setOptions([coords], [dict.fromkeys(self.dictionary.validLetters, 9999)])
     
     def findHorizontalWordLetters(self, coords):
         """Finds the coordinates for each letter of a horizontal word.
@@ -270,7 +264,7 @@ class Crossword(object):
         r = re.compile(regex, re.UNICODE)
 
         # Find letter options/counts based on matching words
-        for word in list(filter(r.match, self.dictionary[len(options)])):
+        for word in list(filter(r.match, self.dictionary.lookup[len(options)])):
             for position, letter in enumerate(word):
                 if letter not in frequencies[position]:
                     frequencies[position][letter] = 0
@@ -469,13 +463,13 @@ class Crossword(object):
                 # Check horizontal word
                 horizontalCoords = self.findHorizontalWordLetters(coords)
                 if len(horizontalCoords)>2 and all(self.isDefined(xy) for xy in horizontalCoords):
-                    if ''.join([next(iter(self.getOptions(xy))) for xy in horizontalCoords]) not in self.dictionary[len(horizontalCoords)]:
+                    if ''.join([next(iter(self.getOptions(xy))) for xy in horizontalCoords]) not in self.dictionary.lookup[len(horizontalCoords)]:
                         return False
                 
                 # Check vertical word
                 verticalCoords = self.findVerticalWordLetters(coords)
                 if len(verticalCoords)>2 and all(self.isDefined(xy) for xy in verticalCoords):
-                    if ''.join([next(iter(self.getOptions(xy))) for xy in verticalCoords]) not in self.dictionary[len(verticalCoords)]:
+                    if ''.join([next(iter(self.getOptions(xy))) for xy in verticalCoords]) not in self.dictionary.lookup[len(verticalCoords)]:
                         return False
         return True
 
@@ -509,7 +503,7 @@ class Crossword(object):
                     regex += "$"
                     r = re.compile(regex, re.UNICODE)
 
-                    horizontalCount = len(list(filter(r.match, self.dictionary[len(wordCoords)])))
+                    horizontalCount = len(list(filter(r.match, self.dictionary.lookup[len(wordCoords)])))
                 
                 # Check vertical word
                 wordCoords = self.findVerticalWordLetters((x,y))
@@ -525,7 +519,7 @@ class Crossword(object):
                     regex += "$"
                     r = re.compile(regex, re.UNICODE)
 
-                    verticalCount = len(list(filter(r.match, self.dictionary[len(wordCoords)])))
+                    verticalCount = len(list(filter(r.match, self.dictionary.lookup[len(wordCoords)])))
 
                 wordOptions[y][x] = math.log10(min(horizontalCount, verticalCount))
 
@@ -610,7 +604,7 @@ class Crossword(object):
         self.options[y][x] = {letter : 1}
 
     def printDefined(self):
-        """Prints the crossword, by only filling cells with single defined letters.
+        """Prints the crossword, by only filling cells with single defined letters. Only used for debugging.
         """
         defined = [[" " for w in range(self.width)] for h in range(self.height)]
         for y in range(self.height):
@@ -620,7 +614,7 @@ class Crossword(object):
         self.printMatrix(defined)
     
     def printEntropies(self):
-        """Prints entropies.
+        """Prints entropies. Only used for debugging.
         """
         entropies = [[0.0 for w in range(self.width)] for h in range(self.height)]
         for y in range(self.height):
@@ -629,7 +623,7 @@ class Crossword(object):
         self.printMatrix(entropies)
 
     def printMatrix(self, matrix, width=3):
-        """Prints any value into the console, in a nice matrix-like way
+        """Prints any value into the console, in a nice matrix-like way. Only used for debugging.
 
         Arguments:
             matrix (2D list): Matrix of values that should be printed. Any type is acceptable as long as it can be cast to string using str().
@@ -647,7 +641,7 @@ class Crossword(object):
         print(out)
     
     def printOptions(self):
-        """Prints the crossword, by filling cells with every letter that is still a valid option.
+        """Prints the crossword, by filling cells with every letter that is still a valid option. Only used for debugging.
         """
         #Column headers
         out = "   |"

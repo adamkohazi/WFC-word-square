@@ -1,25 +1,12 @@
 import crossword
+import dictionary
 from solver import ThreadedWFCSolver
-import string
-from copy import deepcopy
 from kivy.app import App
-from kivy.uix.widget import Widget
 from kivy.lang.builder import Builder
 from kivy.properties import *
-from kivy.uix.screenmanager import ScreenManager, Screen
-from kivy.properties import NumericProperty
-from kivy.uix.boxlayout import BoxLayout
-from kivy.uix.textinput import TextInput
-from kivy.uix.checkbox import CheckBox
-from kivy.uix.button import Button
-from kivy.uix.label import Label
 from kivy.clock import Clock
-from math import atan, pi
-from time import sleep
-from threading import Thread
 from queue import Queue, Empty
 from kivy.core.window import Window
-
 
 from components.cell.cell import Cell
 from components.integer_up_down.integer_up_down import IntegerUpDown
@@ -28,49 +15,8 @@ from components.integer_up_down.integer_up_down import IntegerUpDown
 import random
 #random.seed(1234)
 
-size = [6,11]
-lettersetHU = 'aábcdeéfghiíjklmnoóöőpqrstuúüűvwxyz'
-lettersetEN = string.ascii_lowercase
-
-def optimize_dictionary (dict, lengths, letterset):
-    opt_dict = []
-    for word in dict:
-        valid = True
-        # Check 1: Contains only alpha chars
-        if not word.isalpha():
-            valid = False
-
-        # Check 2: Contains only defined letters
-        for letter in word:
-            if letter not in letterset:
-                valid = False
-                break
-
-        # Check 3: No longer than max length
-        #if len(word) > max(lengths):
-        #    valid = False
-
-        if valid:
-            opt_dict.append(word.lower())
-    return opt_dict
-
-def get_dictionary_word_list(filename):
-    with open(filename, encoding="utf-8") as f:
-        # Return the split results, which is all the words in the file.
-        return f.read().split()
-
-def findLetterset(dictionary):
-    letters = set()
-    for word in dictionary:
-        for letter in word:
-            letters.add(letter)
-    print(''.join(letters))
-    return ''.join(letters)
-
-# Loading words to a dictionary for generation
-dict = get_dictionary_word_list("dictionary_HU.txt")
 size = (10,10)
-dict = optimize_dictionary(dict, size, lettersetHU)
+dict = dictionary.Dictionary("dictionary_HU.txt", validLetters=dictionary.lettersetHU)
 
 class MainApp(App):
     def build(self):
@@ -80,7 +26,7 @@ class MainApp(App):
         self.commandQueue = Queue()
 
         size = (10, 10)
-        rootCrossword = crossword.Crossword(size, dict, lettersetHU)
+        rootCrossword = crossword.Crossword(size, dict)
         self.threadedSolver = ThreadedWFCSolver(rootCrossword, self.statusQueue, self.commandQueue)
         self.threadedSolver.start()
     
@@ -197,7 +143,7 @@ class MainApp(App):
         self.root.ids.grid.cols = self.root.ids.width_input.current_value
         self.root.ids.grid.rows = self.root.ids.height_input.current_value
         self.addCells()
-        rootCrossword = crossword.Crossword(size, dict, lettersetHU)
+        rootCrossword = crossword.Crossword(size, dict)
         self.threadedSolver.onThread(self.threadedSolver.reset, rootCrossword)
     
     def removeCells(self):
