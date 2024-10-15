@@ -40,7 +40,7 @@ class Cell(object):
         """
         self.mask = False
         self.blacklist = []
-        self.options = [dict.fromkeys(self.letterset, 9999)]
+        self.options = dict.fromkeys(self.letterset, 9999)
     
     def setLetterCount(self, letter, count):
         """Sets the count of a single letter. If count is 0, deletes the letter from valid options.
@@ -93,7 +93,7 @@ class Cell(object):
             letter (char): Letter that was choosen for the cell.
         """
         total_weight = sum(self.options[letter] for letter in self.options)
-        rnd = random.random() * total_weight
+        rnd = random() * total_weight
 
         for letter in self.options:
             rnd -= self.options[letter]
