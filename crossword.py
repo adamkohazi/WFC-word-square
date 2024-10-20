@@ -177,7 +177,7 @@ class Crossword(object):
         x, y = coords
         self.cells[y][x].blacklist.append(letter)
     
-    def getMask(self, coords):
+    def getMask(self, coords) -> bool:
         """Returns if given cell is excluded from word validity checks.
         
         Arguments:
@@ -200,7 +200,7 @@ class Crossword(object):
         x, y = coords
         self.cells[y][x].mask = value
     
-    def isDefined(self, coords):
+    def isDefined(self, coords) -> bool:
         """Checks if there's a single letter defined for a cell.
 
         Arguments:
@@ -223,6 +223,59 @@ class Crossword(object):
         """
         x,y = coords
         return self.cells[y][x].define()
+    
+    def isFullyDefined(self):
+        """Checks if there's a single letter defined for every cell.
+
+        Returns:
+            (bool): True if single letter is defined for every cell, False otherwise.
+        """
+        for y in range(self.height):
+            for x in range(self.width):
+                if not self.isDefined((x,y)):
+                    return False
+        return True
+
+    def shannonEntropy(self, coords) -> float:
+        """Calculates the Shannon entropy ("uncertainty") for a cell with given coordinates. Higher number means higher uncertainty.
+
+        Arguments:
+            coords (tuple): Coorinates of the cell to check.
+
+        Returns:
+            entropy (float): Entropy of the cell (in bits).
+        """
+        x,y = coords
+        return self.cells[y][x].shannonEntropy()
+
+    def isDeadend(self):
+        """Checks if crossword is a deadend, meaning there's at least one cell with no valid options.
+
+        Returns:
+            (bool): True if crossword is deadend, False otherwise.
+        """
+        for y in range(self.height):
+            for x in range(self.width):
+                if sum(self.getOptions((x, y))[letter] for letter in self.getOptions((x, y))) == 0:
+                    return True
+        return False
+    
+    def totalOptions(self):
+        """Returns the total number of valid letters for the whole grid. If this number is smaller, the grid is more constrained.
+
+        Returns:
+            (int): Total number of valid letters.
+        """
+        totalOptions = 0
+        for y in range(self.height):
+            for x in range(self.width):
+                totalOptions += sum(self.getOptions((x, y))[letter] for letter in self.getOptions((x, y)))
+        return totalOptions
+    
+    def griditer(self):
+        for y in range(self.height):
+            for x in range(self.width):
+                yield self.cells[y][x]
 
     #@profile
     def find_frequencies(self, options):
@@ -280,10 +333,7 @@ class Crossword(object):
     def updateOptions(self):
         """Iteratively updates letter options, until a minimum subset is reached. After this update, the crossword is either solvable and all invalid letters are eliminated or a deadend is confirmed.
         """
-        old_total_options = 0
-        for y in range(self.height):
-            for x in range(self.width):
-                old_total_options += sum(self.getOptions((x, y))[letter] for letter in self.getOptions((x, y)))
+        old_total_options = self.totalOptions()
         
         startTime = time.perf_counter()
         nUpdates = 0
@@ -340,10 +390,7 @@ class Crossword(object):
                             verticalUpdated[y1][x1] = True
                         
             # Calculate new weight
-            new_total_options = 0
-            for y in range(self.height):
-                for x in range(self.width):
-                    new_total_options += sum(self.getOptions((x, y))[letter] for letter in self.getOptions((x, y)))
+            new_total_options = self.totalOptions()
             
             # Stop updating if no large improvement could be reached
             if new_total_options >= old_total_options * 1.0:
@@ -354,18 +401,6 @@ class Crossword(object):
         endTime = time.perf_counter()
         print("Updating options took: %.2gs and ran %d times" % (endTime-startTime, nUpdates))
         return nUpdates
-            
-    def shannonEntropy(self, coords) -> float:
-        """Calculates the Shannon entropy ("uncertainty") for a cell with given coordinates. Higher number means higher uncertainty.
-
-        Arguments:
-            coords (tuple): Coorinates of the cell to check.
-
-        Returns:
-            entropy (float): Entropy of the cell (in bits).
-        """
-        x,y = coords
-        return self.cells[y][x].shannonEntropy()
 
     def findMinEntropy(self, noise=None):
         """Finds the coordinates with the lowest entropy (e.g. the "most likely" letter)
@@ -397,18 +432,6 @@ class Crossword(object):
                     minEntropyCoords = (x, y)
 
         return minEntropyCoords
-    
-    def isFullyDefined(self):
-        """Checks if there's a single letter defined for every cell.
-
-        Returns:
-            (bool): True if single letter is defined for every cell, False otherwise.
-        """
-        for y in range(self.height):
-            for x in range(self.width):
-                if not self.isDefined((x,y)):
-                    return False
-        return True
     
     def isFullyValid(self):
         """Checks if every defined word is valid.
@@ -525,18 +548,6 @@ class Crossword(object):
         self.printMatrix(horizontalLength)
         self.printMatrix(verticalLength)
         print(lengthDistribution)
-                
-    def isDeadend(self):
-        """Checks if crossword is a deadend, meaning there's at least one cell with no valid options.
-
-        Returns:
-            (bool): True if crossword is deadend, False otherwise.
-        """
-        for y in range(self.height):
-            for x in range(self.width):
-                if sum(self.getOptions((x, y))[letter] for letter in self.getOptions((x, y))) == 0:
-                    return True
-        return False
 
     def printDefined(self):
         """Prints the crossword, by only filling cells with single defined letters. Only used for debugging.
