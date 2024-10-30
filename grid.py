@@ -1,4 +1,5 @@
 import cell
+import random
 
 class Grid(object):
     """Class for keeping track of and interacting with a rectangular grid.
@@ -88,3 +89,81 @@ class Grid(object):
             letterCoordinates.append((x, y))
         
         return letterCoordinates
+    
+    def findMinEntropy(self, noise=None):
+        """Finds the coordinates with the lowest entropy (e.g. the "most likely" letter)
+
+        Arguments:
+            noise (float) - optional: Level of noise mix into the entropies. (Default: No noise is present)
+
+        Returns:
+            minEntropyCoords (tuple): Coorinates of the cell with the minimum entropy.
+        """
+        
+        minEntropyCoords = (0, 0)
+        minEntropy = 1000
+
+        for y in range(self.height):
+            for x in range(self.width): 
+                coords = (x,y)
+
+                # Skip the cell if it is already defined.
+                if self.get(coords).isDefined():
+                    continue
+
+                entropy = self.get(coords).shannonEntropy()
+
+                # Add some noise to mix things up a little
+                if noise:
+                    entropy = entropy - (noise * random.random() / 1000)
+
+                if entropy < minEntropy:
+                    minEntropy = entropy
+                    minEntropyCoords = coords
+        return minEntropyCoords
+
+    def allWords(self) -> list[str]:
+        words = []
+        verticalChecked = [[False for x in range(self.width)] for y in range(self.height)]
+        horizontalChecked = [[False for x in range(self.width)] for y in range(self.height)]
+
+        for y in range(self.height):
+            for x in range(self.width):
+                coords = (x,y)
+
+                # Skip if not part of a word
+                if self.get(coords).options == {"-" : 1} or self.get(coords).mask:
+                    continue
+                
+                # Check horizontal word
+                if not horizontalChecked[y][x]:
+                    horizontalCoords = self.findHorizontalWordLetters(coords)
+                    # Skip if 2 letters or shorter:
+                    if len(horizontalCoords)>2:
+                        # Skip if any letter is undefined
+                        if not all(self.get(letterCoords).isDefined() for letterCoords in horizontalCoords):
+                            continue
+
+                        # Add word to list
+                        words.append(''.join([next(iter(self.get(letterCoords).options)) for letterCoords in horizontalCoords]))
+                        # Mark all letters are checked
+                        for letterCoords in horizontalCoords:
+                            u,v = letterCoords
+                            horizontalChecked[v][u] = True
+                
+                # Same, but vertical
+                if not verticalChecked[y][x]:
+                    verticalCoords = self.findHorizontalWordLetters(coords)
+                    # Skip if 2 letters or shorter:
+                    if len(verticalCoords)>2:
+                        # Skip if any letter is undefined
+                        if not all(self.get(letterCoords).isDefined(letterCoords) for letterCoords in verticalCoords):
+                            continue
+
+                        # Add word to list
+                        words.append(''.join([next(iter(self.get(letterCoords).options)) for letterCoords in verticalCoords]))
+                        # Mark all letters are checked
+                        for letterCoords in verticalCoords:
+                            u,v = letterCoords
+                            verticalChecked[v][u] = True
+        return words

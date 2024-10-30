@@ -37,7 +37,7 @@ class Crossword(object):
         # TODO? reset blacklist?
         # Reset options if cell is not masked
         for cell in self.grid:
-            if not cell.mask():
+            if not cell.mask:
                 cell.reset()
     
     def resetCell(self, coords):
@@ -46,7 +46,7 @@ class Crossword(object):
         Arguments:
             coords (tuple): Coorinates of the cell to reset.
         """
-        self.cells.get(coords).reset()
+        self.grid.get(coords).reset()
 
     def getOptions(self, coords):
         """Lists valid letters for a single cell.
@@ -57,7 +57,7 @@ class Crossword(object):
         Returns:
             (dict): Valid letters for the cell.
         """
-        return self.cells.get(coords).options
+        return self.grid.get(coords).options
     
     def setOptions(self, letterCoords, options):
         """Sets valid letters for multiple cells with given coordinates.
@@ -67,7 +67,7 @@ class Crossword(object):
             options (list of dicts): Valid letters for each cell.
         """
         for position, coords in enumerate(letterCoords):
-            self.cells.get(coords).options = options[position]
+            self.grid.get(coords).options = options[position]
     
     def setLetter(self, coords, letter):
         """Defines a single letter for a cell, discarding all other options.
@@ -76,7 +76,7 @@ class Crossword(object):
             coords (tuple): Coorinates of the cell to set.
             letter (char): Letter to set.
         """
-        self.cells.get(coords).setLetter(letter)
+        self.grid.get(coords).setLetter(letter)
     
     def setLetterCount(self, coords, letter, count):
         """Sets the count of a single letter of cell for given coordinates. If count is 0, deletes the letter option.
@@ -86,7 +86,7 @@ class Crossword(object):
             letter (char): Letter to set.
             count (int): Count of given letter. If 0, letter is considered invalid for this position.
         """
-        cell = self.cells.get(coords)
+        cell =self.grid.get(coords)
         if not cell.mask:
             if count == 0:
                 del cell.options[letter]
@@ -102,7 +102,7 @@ class Crossword(object):
         Returns:
             (list): Blacklisted letters for the cell.
         """
-        self.cells.get(coords).blacklist
+        self.grid.get(coords).blacklist
 
     def addToBlacklist(self, coords, letter):
         """Adds letter to blacklist for a single cell.
@@ -112,7 +112,7 @@ class Crossword(object):
             letter (char): Letter to blacklist.
 
         """
-        self.cells.get(coords).blacklist.append(letter)
+        self.grid.get(coords).blacklist.append(letter)
     
     def getMask(self, coords) -> bool:
         """Returns if given cell is excluded from word validity checks.
@@ -123,7 +123,7 @@ class Crossword(object):
         Returns:
             (bool): True if cell is excluded from validity checks.
         """
-        self.cells.get(coords).mask
+        self.grid.get(coords).mask
 
     def setMask(self, coords, value=True):
         """Sets mask for a single cell.
@@ -133,7 +133,7 @@ class Crossword(object):
             value (bool): (True by default) Mask status for set.
 
         """
-        self.cells.get(coords).mask = value
+        self.grid.get(coords).mask = value
     
     def isDefined(self, coords) -> bool:
         """Checks if there's a single letter defined for a cell.
@@ -144,7 +144,7 @@ class Crossword(object):
         Returns:
             (bool): True if single letter is defined, False otherwise.
         """
-        self.cells.get(coords).isDefined()
+        self.grid.get(coords).isDefined()
     
     def define(self, coords):
         """Defines a single letter for a cell with multiple options, weighted by letter frequencies for valid words.
@@ -155,7 +155,7 @@ class Crossword(object):
         Returns:
             letter (char): Letter that was choosen for the cell.
         """
-        return self.cells.get(coords).define()
+        return self.grid.get(coords).define()
     
     def isFullyDefined(self):
         """Checks if there's a single letter defined for every cell.
@@ -177,7 +177,7 @@ class Crossword(object):
         Returns:
             entropy (float): Entropy of the cell (in bits).
         """
-        return self.cells.get(coords).shannonEntropy()
+        return self.grid.get(coords).shannonEntropy()
 
     def isDeadend(self):
         """Checks if crossword is a deadend, meaning there's at least one cell with no valid options.
@@ -244,7 +244,7 @@ class Crossword(object):
         #TODO: Running the find frequencies function takes ~95% of the runtime. Performance could be greatly increased by performing less lookups.
         for position, frequencies in enumerate(self.find_frequencies(wordOptions)):
             coords = letterCoords[position]
-            for letter in self.cells.get(coords).options.copy():
+            for letter in self.grid.get(coords).options.copy():
                 if letter not in frequencies or letter in self.getBlacklist(coords):
                     # Invalidate letters that are blacklisted or don't appear in words.
                     self.setLetterCount(coords, letter, 0)
@@ -265,10 +265,9 @@ class Crossword(object):
         while(True):
             nUpdates += 1
             # Remove blacklisted letters:
-            for y in range(self.height):
-                for x in range(self.width):
-                    for letter in self.getBlacklist((x, y)):
-                        self.setLetterCount((x, y), letter, 0)
+            for cell in self.grid:
+                for letter in cell.blacklist:
+                    cell.setLetterCount(letter, 0)
             
             # Stop updating if already deadend
             if self.isDeadend():
@@ -279,8 +278,8 @@ class Crossword(object):
             verticalUpdated = [[False for w in range(self.width)] for h in range(self.height)]
 
             # Go through every cell
-            for y in range(self.height):
-                for x in range(self.width):
+            for y in range(self.grid.height):
+                for x in range(self.grid.width):
                     coords = (x, y)
 
                     # Skip cell if it's defined or masked
@@ -335,27 +334,8 @@ class Crossword(object):
         Returns:
             minEntropyCoords (tuple): Coorinates of the cell with the minimum entropy.
         """
-        
-        minEntropyCoords = (0, 0)
-        minEntropy = 1000
 
-        for y in range(self.height):
-            for x in range(self.width):
-                # Skip the cell if it is already defined.
-                if self.isDefined((x,y)):
-                    continue
-
-                entropy = self.shannonEntropy((x,y))
-
-                # Add some noise to mix things up a little
-                if noise:
-                    entropy = entropy - (noise * random.random() / 1000)
-
-                if entropy < minEntropy:
-                    minEntropy = entropy
-                    minEntropyCoords = (x, y)
-
-        return minEntropyCoords
+        return self.grid.findMinEntropy(noise)
     
     def isFullyValid(self):
         """Checks if every defined word is valid.
@@ -363,25 +343,10 @@ class Crossword(object):
         Returns:
             (bool): True if every full word is valid, False otherwise.
         """
-        for y in range(self.height):
-            for x in range(self.width):
-                # Skip cell if it's a blank or masked
-                coords = (x,y)
-                if self.getOptions(coords) == {"-" : 1} or self.getMask(coords):
-                    continue
-                
-                # Check horizontal word
-                horizontalCoords = self.findHorizontalWordLetters(coords)
-                if len(horizontalCoords)>2 and all(self.isDefined(xy) for xy in horizontalCoords):
-                    if ''.join([next(iter(self.getOptions(xy))) for xy in horizontalCoords]) not in self.dictionary.lookup[len(horizontalCoords)]:
-                        return False
-                
-                # Check vertical word
-                verticalCoords = self.findVerticalWordLetters(coords)
-                if len(verticalCoords)>2 and all(self.isDefined(xy) for xy in verticalCoords):
-                    if ''.join([next(iter(self.getOptions(xy))) for xy in verticalCoords]) not in self.dictionary.lookup[len(verticalCoords)]:
-                        return False
-        return True
+        for word in self.grid.allWords():
+            if word not in self.dictionary.lookup[len(word)]:
+                return False
+        return True 
 
     def printAssessment(self):
         """Checks if every defined word is valid.
@@ -389,6 +354,7 @@ class Crossword(object):
         Returns:
             (bool): True if every full word is valid, False otherwise.
         """
+        return
         wordOptions = [[" " for w in range(self.width)] for h in range(self.height)]
         
         # Assess number of word options considering only fixed letters
@@ -476,6 +442,7 @@ class Crossword(object):
     def printDefined(self):
         """Prints the crossword, by only filling cells with single defined letters. Only used for debugging.
         """
+        return
         defined = [[" " for w in range(self.width)] for h in range(self.height)]
         for y in range(self.height):
             for x in range(self.width):
@@ -486,6 +453,7 @@ class Crossword(object):
     def printEntropies(self):
         """Prints entropies. Only used for debugging.
         """
+        return
         entropies = [[0.0 for w in range(self.width)] for h in range(self.height)]
         for y in range(self.height):
             for x in range(self.width):
@@ -499,6 +467,7 @@ class Crossword(object):
             matrix (2D list): Matrix of values that should be printed. Any type is acceptable as long as it can be cast to string using str().
             width (int): Width of one column in characters.
         """
+        return
         out = "   "
         for x in range(self.width):
             out += str(x).center(width)
@@ -513,6 +482,7 @@ class Crossword(object):
     def printOptions(self):
         """Prints the crossword, by filling cells with every letter that is still a valid option. Only used for debugging.
         """
+        return
         #Column headers
         out = "   |"
         for x in range(self.width):
