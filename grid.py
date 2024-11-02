@@ -157,7 +157,7 @@ class Grid(object):
                     # Skip if 2 letters or shorter:
                     if len(verticalCoords)>2:
                         # Skip if any letter is undefined
-                        if not all(self.get(letterCoords).isDefined(letterCoords) for letterCoords in verticalCoords):
+                        if not all(self.get(letterCoords).isDefined() for letterCoords in verticalCoords):
                             continue
 
                         # Add word to list

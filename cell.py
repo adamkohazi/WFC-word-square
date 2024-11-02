@@ -51,7 +51,8 @@ class Cell(object):
         """
         if not self.mask:
             if count == 0:
-                del self.options[letter]
+                if letter in self.options:
+                    del self.options[letter]
             else:
                 self.options[letter] = count
 

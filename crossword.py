@@ -239,13 +239,13 @@ class Crossword(object):
         """
         wordOptions = []
         for coords in letterCoords:
-            wordOptions.append(self.cells.get(coords).options)
+            wordOptions.append(self.grid.get(coords).options)
         
         #TODO: Running the find frequencies function takes ~95% of the runtime. Performance could be greatly increased by performing less lookups.
         for position, frequencies in enumerate(self.find_frequencies(wordOptions)):
             coords = letterCoords[position]
             for letter in self.grid.get(coords).options.copy():
-                if letter not in frequencies or letter in self.getBlacklist(coords):
+                if letter not in frequencies or letter in self.grid.get(coords).blacklist:
                     # Invalidate letters that are blacklisted or don't appear in words.
                     self.setLetterCount(coords, letter, 0)
                 else:
@@ -274,8 +274,8 @@ class Crossword(object):
                 break
             
             # Keep track of what has been updated, to avoid updating a word for every letter
-            horizontalUpdated = [[False for w in range(self.width)] for h in range(self.height)]
-            verticalUpdated = [[False for w in range(self.width)] for h in range(self.height)]
+            horizontalUpdated = [[False for w in range(self.grid.width)] for h in range(self.grid.height)]
+            verticalUpdated = [[False for w in range(self.grid.width)] for h in range(self.grid.height)]
 
             # Go through every cell
             for y in range(self.grid.height):
@@ -292,7 +292,7 @@ class Crossword(object):
                     
                     # If horizontal word of the cell was not yet updated, update it
                     if horizontalUpdated[y][x] != True:
-                        wordCoords = self.findHorizontalWordLetters(coords)
+                        wordCoords = self.grid.findHorizontalWordLetters(coords)
                         if(len(wordCoords)>2):
                             self.updateWordOptions(wordCoords)
                         # Note that the word was updated
@@ -305,7 +305,7 @@ class Crossword(object):
 
                     # If vertical word of the cell was not yet updated, update it
                     if verticalUpdated[y][x] != True:
-                        wordCoords = self.findVerticalWordLetters(coords)
+                        wordCoords = self.grid.findVerticalWordLetters(coords)
                         if(len(wordCoords)>2):
                             self.updateWordOptions(wordCoords)
                         # Note that the word was updated
