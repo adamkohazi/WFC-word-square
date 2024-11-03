@@ -38,11 +38,22 @@ class Cell(object):
         Arguments:
             coords (tuple): Coorinates of the cell to reset.
         """
-        self.mask = False
+        self._mask = False
         self.blacklist = []
         self.options = dict.fromkeys(self.letterset, 9999)
     
-    def setLetterCount(self, letter, count):
+    @property
+    def mask(self) -> bool:
+        return self._mask
+
+    @mask.setter
+    def mask(self, value:bool = True):
+        self._mask = value
+    
+    def setMask(self, value=True):
+        self._mask = value
+    
+    def setLetterCount(self, letter:str, count:int):
         """Sets the count of a single letter. If count is 0, deletes the letter from valid options.
         
         Arguments:
@@ -56,7 +67,7 @@ class Cell(object):
             else:
                 self.options[letter] = count
 
-    def addToBlacklist(self, letter):
+    def addToBlacklist(self, letter:str):
         """Appends an additional letter to the blacklist.
         
         Arguments:
@@ -79,7 +90,7 @@ class Cell(object):
                 entropy -= letterProbability * log(letterProbability)
         return entropy
 
-    def isDefined(self):
+    def isDefined(self) -> bool:
         """Checks if there's a only single letter defined.
 
         Returns:
@@ -87,7 +98,7 @@ class Cell(object):
         """
         return (sum(self.options[letter] > 0 for letter in self.options) == 1)
     
-    def define(self):
+    def define(self) -> str:
         """Defines a single letter based on current options.
 
         Returns:
@@ -102,7 +113,7 @@ class Cell(object):
                 self.setLetter(letter)
                 return letter
 
-    def setLetter(self, letter):
+    def setLetter(self, letter:str):
         """Sets a single letter, discarding all other options.
 
         Arguments:

@@ -21,18 +21,64 @@ class Grid(object):
         # Initially every letter is an option for every field
         self.cells = [[cell.Cell(cell.Coords(x, y), letterset) for x in range(self.width)] for y in range(self.height)]
     
-    def get(self, coords) -> cell:
+    def __getitem__(self, coords) -> cell:
         x,y = coords
-        return self.cells[y][x]
+        if 0 <= x < self.width and 0 <= y < self.height:
+            return self.cells[y][x]
+        else:
+            raise IndexError("Grid index out of range")
 
-    def set(self, coords, cell):
+    def __setitem__(self, coords, cell):
         x,y = coords
-        self.cells[y][x] = cell
+        if 0 <= x < self.width and 0 <= y < self.height:
+            self.cells[y][x] = cell
+        else:
+            raise IndexError("Grid index out of range")
 
     def __iter__(self):
         for y in range(self.height):
             for x in range(self.width):
                 yield self.cells[y][x]
+    
+    def reset(self):
+        # TODO? reset blacklist?
+        # Reset options if cell is not masked
+        for cell in self:
+            if not cell.mask:
+                cell.reset()
+    
+    def isFullyDefined(self) -> bool:
+        """Checks if there's a single letter defined for every cell.
+
+        Returns:
+            (bool): True if single letter is defined for every cell, False otherwise.
+        """
+        for cell in self:
+            if not cell.isDefined():
+                return False
+        return True
+
+    def isDeadend(self) -> bool:
+        """Checks if crossword is a deadend, meaning there's at least one cell with no valid options.
+
+        Returns:
+            (bool): True if crossword is deadend, False otherwise.
+        """
+        for cell in self:
+            if sum(cell.options[letter] for letter in cell.options) == 0:
+                return True
+        return False
+    
+    def totalOptions(self) -> int:
+        """Returns the total number of valid letters for the whole grid. If this number is smaller, the grid is more constrained.
+
+        Returns:
+            (int): Total number of valid letters.
+        """
+        totalOptions = 0
+        for cell in self:
+            totalOptions += sum(cell.options[letter] for letter in cell.options)
+        return totalOptions
     
     def findHorizontalWordLetters(self, coords) -> list[tuple[int]]:
         """Finds the coordinates for each letter of a horizontal word.
@@ -43,17 +89,17 @@ class Grid(object):
         Returns:
             letterCoords (list of tuples): List of letter coordinates from left to right.
         """
-        if self.get(coords).options=={"-" : 1}:
+        if self[coords].options=={"-" : 1}:
             return []
         
         x, y = coords
 
         xStart = x
-        while (xStart > 0) and (self.get((xStart-1, y)).options != {"-" : 1}):
+        while (xStart > 0) and (self[(xStart-1, y)].options != {"-" : 1}):
             xStart -= 1
         
         xEnd = x
-        while (xEnd < self.width) and (self.get((xEnd, y)).options != {"-" : 1}):
+        while (xEnd < self.width) and (self[(xEnd, y)].options != {"-" : 1}):
             xEnd += 1
 
         letterCoordinates = []
@@ -71,17 +117,17 @@ class Grid(object):
         Returns:
             letterCoords (list of tuples): List of letter coordinates from top to bottom.
         """
-        if self.get(coords).options=={"-" : 1}:
+        if self[coords].options=={"-" : 1}:
             return []
         
         x, y = coords
 
         yStart = y
-        while (yStart > 0) and (self.get((x, yStart-1)).options != {"-" : 1}):
+        while (yStart > 0) and (self[(x, yStart-1)].options != {"-" : 1}):
             yStart -= 1
         
         yEnd = y
-        while (yEnd < self.height) and (self.get((x, yEnd)).options != {"-" : 1}):
+        while (yEnd < self.height) and (self[(x, yEnd)].options != {"-" : 1}):
             yEnd += 1
 
         letterCoordinates = []
@@ -108,10 +154,10 @@ class Grid(object):
                 coords = (x,y)
 
                 # Skip the cell if it is already defined.
-                if self.get(coords).isDefined():
+                if self[coords].isDefined():
                     continue
 
-                entropy = self.get(coords).shannonEntropy()
+                entropy = self[coords].shannonEntropy()
 
                 # Add some noise to mix things up a little
                 if noise:
@@ -132,7 +178,7 @@ class Grid(object):
                 coords = (x,y)
 
                 # Skip if not part of a word
-                if self.get(coords).options == {"-" : 1} or self.get(coords).mask:
+                if self[coords].options == {"-" : 1} or self[coords].mask:
                     continue
                 
                 # Check horizontal word
@@ -141,11 +187,11 @@ class Grid(object):
                     # Skip if 2 letters or shorter:
                     if len(horizontalCoords)>2:
                         # Skip if any letter is undefined
-                        if not all(self.get(letterCoords).isDefined() for letterCoords in horizontalCoords):
+                        if not all(self[letterCoords].isDefined() for letterCoords in horizontalCoords):
                             continue
 
                         # Add word to list
-                        words.append(''.join([next(iter(self.get(letterCoords).options)) for letterCoords in horizontalCoords]))
+                        words.append(''.join([next(iter(self[letterCoords].options)) for letterCoords in horizontalCoords]))
                         # Mark all letters are checked
                         for letterCoords in horizontalCoords:
                             u,v = letterCoords
@@ -157,11 +203,11 @@ class Grid(object):
                     # Skip if 2 letters or shorter:
                     if len(verticalCoords)>2:
                         # Skip if any letter is undefined
-                        if not all(self.get(letterCoords).isDefined() for letterCoords in verticalCoords):
+                        if not all(self[letterCoords].isDefined() for letterCoords in verticalCoords):
                             continue
 
                         # Add word to list
-                        words.append(''.join([next(iter(self.get(letterCoords).options)) for letterCoords in verticalCoords]))
+                        words.append(''.join([next(iter(self[letterCoords].options)) for letterCoords in verticalCoords]))
                         # Mark all letters are checked
                         for letterCoords in verticalCoords:
                             u,v = letterCoords

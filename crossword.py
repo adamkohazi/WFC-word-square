@@ -34,172 +34,7 @@ class Crossword(object):
         #self.updateOptions()
     
     def reset(self):
-        # TODO? reset blacklist?
-        # Reset options if cell is not masked
-        for cell in self.grid:
-            if not cell.mask:
-                cell.reset()
-    
-    def resetCell(self, coords):
-        """Resets a single cell. Mask is disabled, blacklist emptied, every letter option set.
-        
-        Arguments:
-            coords (tuple): Coorinates of the cell to reset.
-        """
-        self.grid.get(coords).reset()
-
-    def getOptions(self, coords):
-        """Lists valid letters for a single cell.
-        
-        Arguments:
-            coords (tuple): Coorinates of the cell to check.
-
-        Returns:
-            (dict): Valid letters for the cell.
-        """
-        return self.grid.get(coords).options
-    
-    def setOptions(self, letterCoords, options):
-        """Sets valid letters for multiple cells with given coordinates.
-        
-        Arguments:
-            letterCoords (list of tuples): List of letter coordinates to set.
-            options (list of dicts): Valid letters for each cell.
-        """
-        for position, coords in enumerate(letterCoords):
-            self.grid.get(coords).options = options[position]
-    
-    def setLetter(self, coords, letter):
-        """Defines a single letter for a cell, discarding all other options.
-
-        Arguments:
-            coords (tuple): Coorinates of the cell to set.
-            letter (char): Letter to set.
-        """
-        self.grid.get(coords).setLetter(letter)
-    
-    def setLetterCount(self, coords, letter, count):
-        """Sets the count of a single letter of cell for given coordinates. If count is 0, deletes the letter option.
-        
-        Arguments:
-            coords (tuple): Coorinates of the cell to set.
-            letter (char): Letter to set.
-            count (int): Count of given letter. If 0, letter is considered invalid for this position.
-        """
-        cell =self.grid.get(coords)
-        if not cell.mask:
-            if count == 0:
-                del cell.options[letter]
-            else:
-                cell.options[letter] = count
-    
-    def getBlacklist(self, coords):
-        """Lists blacklisted letters for a single cell.
-        
-        Arguments:
-            coords (tuple): Coorinates of the cell to check.
-
-        Returns:
-            (list): Blacklisted letters for the cell.
-        """
-        self.grid.get(coords).blacklist
-
-    def addToBlacklist(self, coords, letter):
-        """Adds letter to blacklist for a single cell.
-        
-        Arguments:
-            coords (tuple): Coorinates of the cell to set.
-            letter (char): Letter to blacklist.
-
-        """
-        self.grid.get(coords).blacklist.append(letter)
-    
-    def getMask(self, coords) -> bool:
-        """Returns if given cell is excluded from word validity checks.
-        
-        Arguments:
-            coords (tuple): Coorinates of the cell to check.
-
-        Returns:
-            (bool): True if cell is excluded from validity checks.
-        """
-        self.grid.get(coords).mask
-
-    def setMask(self, coords, value=True):
-        """Sets mask for a single cell.
-        
-        Arguments:
-            coords (tuple): Coorinates of the cell to set.
-            value (bool): (True by default) Mask status for set.
-
-        """
-        self.grid.get(coords).mask = value
-    
-    def isDefined(self, coords) -> bool:
-        """Checks if there's a single letter defined for a cell.
-
-        Arguments:
-            coords (tuple): Coorinates of the cell to check.
-
-        Returns:
-            (bool): True if single letter is defined, False otherwise.
-        """
-        self.grid.get(coords).isDefined()
-    
-    def define(self, coords):
-        """Defines a single letter for a cell with multiple options, weighted by letter frequencies for valid words.
-
-        Arguments:
-            coords (tuple): Coorinates of the cell to set.
-
-        Returns:
-            letter (char): Letter that was choosen for the cell.
-        """
-        return self.grid.get(coords).define()
-    
-    def isFullyDefined(self):
-        """Checks if there's a single letter defined for every cell.
-
-        Returns:
-            (bool): True if single letter is defined for every cell, False otherwise.
-        """
-        for cell in self.grid:
-            if not cell.isDefined():
-                return False
-        return True
-
-    def shannonEntropy(self, coords) -> float:
-        """Calculates the Shannon entropy ("uncertainty") for a cell with given coordinates. Higher number means higher uncertainty.
-
-        Arguments:
-            coords (tuple): Coorinates of the cell to check.
-
-        Returns:
-            entropy (float): Entropy of the cell (in bits).
-        """
-        return self.grid.get(coords).shannonEntropy()
-
-    def isDeadend(self):
-        """Checks if crossword is a deadend, meaning there's at least one cell with no valid options.
-
-        Returns:
-            (bool): True if crossword is deadend, False otherwise.
-        """
-        for cell in self.grid:
-            if sum(cell.options[letter] for letter in cell.options) == 0:
-                return True
-        return False
-    
-    def totalOptions(self):
-        """Returns the total number of valid letters for the whole grid. If this number is smaller, the grid is more constrained.
-
-        Returns:
-            (int): Total number of valid letters.
-        """
-        totalOptions = 0
-        for cell in self.grid:
-            totalOptions += sum(cell.options[letter] for letter in cell.options)
-        return totalOptions
+        self.grid.reset()
 
     #@profile
     def find_frequencies(self, options):
@@ -239,25 +74,25 @@ class Crossword(object):
         """
         wordOptions = []
         for coords in letterCoords:
-            wordOptions.append(self.grid.get(coords).options)
+            wordOptions.append(self.grid[coords].options)
         
         #TODO: Running the find frequencies function takes ~95% of the runtime. Performance could be greatly increased by performing less lookups.
         for position, frequencies in enumerate(self.find_frequencies(wordOptions)):
             coords = letterCoords[position]
-            for letter in self.grid.get(coords).options.copy():
-                if letter not in frequencies or letter in self.grid.get(coords).blacklist:
+            for letter in self.grid[coords].options.copy():
+                if letter not in frequencies or letter in self.grid[coords].blacklist:
                     # Invalidate letters that are blacklisted or don't appear in words.
-                    self.setLetterCount(coords, letter, 0)
+                    self.grid[coords].setLetterCount(letter, 0)
                 else:
                     # Take the minimum of the existing and new letter weights.
                     # This is done so that if a letter is very common for horizontal words but rare for vertical words, it will be considered rare.
-                    self.setLetterCount(coords, letter, min(self.getOptions(coords)[letter], frequencies[letter]))
+                    self.grid[coords].setLetterCount(letter, min(self.grid[coords].options[letter], frequencies[letter]))
 
     #@profile
     def updateOptions(self):
         """Iteratively updates letter options, until a minimum subset is reached. After this update, the crossword is either solvable and all invalid letters are eliminated or a deadend is confirmed.
         """
-        old_total_options = self.totalOptions()
+        old_total_options = self.grid.totalOptions()
         
         startTime = time.perf_counter()
         nUpdates = 0
@@ -270,7 +105,7 @@ class Crossword(object):
                     cell.setLetterCount(letter, 0)
             
             # Stop updating if already deadend
-            if self.isDeadend():
+            if self.grid.isDeadend():
                 break
             
             # Keep track of what has been updated, to avoid updating a word for every letter
@@ -283,11 +118,11 @@ class Crossword(object):
                     coords = (x, y)
 
                     # Skip cell if it's defined or masked
-                    if self.isDefined(coords) or self.getMask(coords):
+                    if self.grid[coords].isDefined() or self.grid[coords].mask:
                         continue
                     
                     # Stop updating if already deadend
-                    if self.isDeadend():
+                    if self.grid.isDeadend():
                         break
                     
                     # If horizontal word of the cell was not yet updated, update it
@@ -300,7 +135,7 @@ class Crossword(object):
                             horizontalUpdated[y1][x1] = True
                     
                     # Stop updating if already deadend
-                    if self.isDeadend():
+                    if self.grid.isDeadend():
                         break
 
                     # If vertical word of the cell was not yet updated, update it
@@ -313,7 +148,7 @@ class Crossword(object):
                             verticalUpdated[y1][x1] = True
                         
             # Calculate new weight
-            new_total_options = self.totalOptions()
+            new_total_options = self.grid.totalOptions()
             
             # Stop updating if no large improvement could be reached
             if new_total_options >= old_total_options * 1.0:
@@ -324,18 +159,6 @@ class Crossword(object):
         endTime = time.perf_counter()
         print("Updating options took: %.2gs and ran %d times" % (endTime-startTime, nUpdates))
         return nUpdates
-
-    def findMinEntropy(self, noise=None):
-        """Finds the coordinates with the lowest entropy (e.g. the "most likely" letter)
-
-        Arguments:
-            noise (float) - optional: Level of noise mix into the entropies. (Default: No noise is present)
-
-        Returns:
-            minEntropyCoords (tuple): Coorinates of the cell with the minimum entropy.
-        """
-
-        return self.grid.findMinEntropy(noise)
     
     def isFullyValid(self):
         """Checks if every defined word is valid.
@@ -346,227 +169,4 @@ class Crossword(object):
         for word in self.grid.allWords():
             if word not in self.dictionary.lookup[len(word)]:
                 return False
-        return True 
-
-    def printAssessment(self):
-        """Checks if every defined word is valid.
-
-        Returns:
-            (bool): True if every full word is valid, False otherwise.
-        """
-        return
-        wordOptions = [[" " for w in range(self.width)] for h in range(self.height)]
-        
-        # Assess number of word options considering only fixed letters
-        for y in range(self.height):
-            for x in range(self.width):
-                # Skip cell if it's defined or masked
-                if self.isDefined((x,y)) or self.getMask((x,y)):
-                    wordOptions[y][x] = next(iter(self.getOptions((x,y))))
-                    continue
-                
-                # Check horizontal word
-                wordCoords = self.findHorizontalWordLetters((x,y))
-                horizontalCount = 9999
-                if len(wordCoords) > 2:
-                    # Convert elements to regular expression:
-                    regex = "^"
-                    for coords in wordCoords:
-                        if self.isDefined(coords):
-                            regex += next(iter(self.getOptions(coords)))
-                        else:
-                            regex += '.'
-                    regex += "$"
-                    r = re.compile(regex, re.UNICODE)
-
-                    horizontalCount = len(list(filter(r.match, self.dictionary.lookup[len(wordCoords)])))
-                
-                # Check vertical word
-                wordCoords = self.findVerticalWordLetters((x,y))
-                verticalCount = 9999
-                if len(wordCoords) > 2:
-                    # Convert elements to regular expression:
-                    regex = "^"
-                    for coords in wordCoords:
-                        if self.isDefined(coords):
-                            regex += next(iter(self.getOptions(coords)))
-                        else:
-                            regex += '.'
-                    regex += "$"
-                    r = re.compile(regex, re.UNICODE)
-
-                    verticalCount = len(list(filter(r.match, self.dictionary.lookup[len(wordCoords)])))
-
-                wordOptions[y][x] = math.log10(min(horizontalCount, verticalCount))
-
-        self.printMatrix(wordOptions, 5)
-
-        horizontalUpdated = [[False for w in range(self.width)] for h in range(self.height)]
-        verticalUpdated = [[False for w in range(self.width)] for h in range(self.height)]
-
-        horizontalLength = [[' ' for w in range(self.width)] for h in range(self.height)]
-        verticalLength = [[' ' for w in range(self.width)] for h in range(self.height)]
-
-        lengthDistribution = [0 for n in range(max(self.width, self.height) + 1)]
-
-
-        # Assess word lengths
-        for y in range(self.height):
-            for x in range(self.width):
-                # Skip cell if it's a blank
-                if self.getOptions((x,y)) == {"-" : 1}:
-                    continue
-                
-                # Check horizontal word
-                horizontalCoords = self.findHorizontalWordLetters((x,y))
-                horizontalLength[y][x] = len(horizontalCoords)
-                # If horizontal word yet counted, increment counter
-                if horizontalUpdated[y][x] != True:
-                    lengthDistribution[horizontalLength[y][x]] += 1
-                    for x1, y1 in horizontalCoords:
-                        horizontalUpdated[y1][x1] = True
-                        
-                # Check vertical word
-                verticalCoords = self.findVerticalWordLetters((x,y))
-                verticalLength[y][x] = len(verticalCoords)
-                # If vertical word yet counted, increment counter
-                if verticalUpdated[y][x] != True:
-                    lengthDistribution[verticalLength[y][x]] += 1
-                    for x1, y1 in verticalCoords:
-                        verticalUpdated[y1][x1] = True
-
-        self.printMatrix(horizontalLength)
-        self.printMatrix(verticalLength)
-        print(lengthDistribution)
-
-    def printDefined(self):
-        """Prints the crossword, by only filling cells with single defined letters. Only used for debugging.
-        """
-        return
-        defined = [[" " for w in range(self.width)] for h in range(self.height)]
-        for y in range(self.height):
-            for x in range(self.width):
-                if self.isDefined((x,y)):
-                    defined[y][x] = next(iter(self.getOptions((x,y))))
-        self.printMatrix(defined)
-    
-    def printEntropies(self):
-        """Prints entropies. Only used for debugging.
-        """
-        return
-        entropies = [[0.0 for w in range(self.width)] for h in range(self.height)]
-        for y in range(self.height):
-            for x in range(self.width):
-                entropies[y][x] = self.shannonEntropy((x,y))
-        self.printMatrix(entropies)
-
-    def printMatrix(self, matrix, width=3):
-        """Prints any value into the console, in a nice matrix-like way. Only used for debugging.
-
-        Arguments:
-            matrix (2D list): Matrix of values that should be printed. Any type is acceptable as long as it can be cast to string using str().
-            width (int): Width of one column in characters.
-        """
-        return
-        out = "   "
-        for x in range(self.width):
-            out += str(x).center(width)
-        out += "\n"
-        for y in range(self.height):
-            out += str(y).center(width)
-            for x in range(self.width):
-                out += str(matrix[y][x])[:width].center(width)
-            out += "\n"
-        print(out)
-    
-    def printOptions(self):
-        """Prints the crossword, by filling cells with every letter that is still a valid option. Only used for debugging.
-        """
-        return
-        #Column headers
-        out = "   |"
-        for x in range(self.width):
-            out += "   " + str(x) + "  |"
-        out += "\n"
-
-        #Column header separator
-        out += "---|"
-        for x in range(self.width):
-            out += "------|"
-        out += "\n"
-
-        #Row headers
-        for y in range(self.height):
-            out += "   |"
-            for x in range(self.width):
-                for letter in "abcdef":
-                    if letter in self.getOptions((x, y)):
-                        if self.getOptions((x, y))[letter] > 0:
-                            out += letter
-                        else:
-                            out += " "
-                    else:
-                        out += " "
-                out += "|"
-            out += "\n"
-
-            out += "   |"
-            for x in range(self.width):
-                for letter in "ghijkl":
-                    if letter in self.getOptions((x, y)):
-                        if self.getOptions((x, y))[letter] > 0:
-                            out += letter
-                        else:
-                            out += " "
-                    else:
-                        out += " "
-                out += "|"
-            out += "\n"
-
-            out += " "+ str(y) +" |"
-            for x in range(self.width):
-                for letter in "mnopqr":
-                    if letter in self.getOptions((x, y)):
-                        if self.getOptions((x, y))[letter] > 0:
-                            out += letter
-                        else:
-                            out += " "
-                    else:
-                        out += " "
-                out += "|"
-            out += "\n"
-
-            out += "   |"
-            for x in range(self.width):
-                for letter in "stuvwx":
-                    if letter in self.getOptions((x, y)):
-                        if self.getOptions((x, y))[letter] > 0:
-                            out += letter
-                        else:
-                            out += " "
-                    else:
-                        out += " "
-                out += "|"
-            out += "\n"
-
-            out += "   |"
-            for x in range(self.width):
-                for letter in "yz-áéó":
-                    if letter in self.getOptions((x, y)):
-                        if self.getOptions((x, y))[letter] > 0:
-                            out += letter
-                        else:
-                            out += " "
-                    else:
-                        out += " "
-                out += "|"
-            out += "\n"
-
-            out += "---|"
-            for x in range(self.width):
-                out += "------|"
-            out += "\n"
-
-        print(out)
-    
-    
+        return True

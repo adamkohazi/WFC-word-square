@@ -65,7 +65,7 @@ class MainApp(App):
                     coords = (int(cell.pos_x), int(cell.pos_y))
                     break
             if coords is not None:
-                self.threadedSolver.onThread(self.threadedSolver.root.crossword.resetCell, coords)
+                self.threadedSolver.onThread(self.threadedSolver.root.crossword.grid[coords].reset)
                 self.threadedSolver.onThread(self.threadedSolver.updateStatus)
         
         elif True:
@@ -76,10 +76,11 @@ class MainApp(App):
                     coords = (int(cell.pos_x), int(cell.pos_y))
                     break
 
-            # Set letter and mask
+            # Set letter and mask, than update
             if coords is not None:
-                self.threadedSolver.onThread(self.threadedSolver.root.crossword.setLetter, coords, text)
-                self.threadedSolver.onThread(self.threadedSolver.root.crossword.setMask, coords)
+                self.threadedSolver.onThread(self.threadedSolver.root.crossword.grid[coords].setLetter, text)
+                self.threadedSolver.onThread(self.threadedSolver.root.crossword.grid[coords].setMask, True)
+                self.threadedSolver.onThread(self.threadedSolver.root.crossword.updateOptions)
                 self.threadedSolver.onThread(self.threadedSolver.updateStatus)
 
         return True
@@ -109,14 +110,14 @@ class MainApp(App):
             for cell in self.root.ids.grid.children:
                 try:
                     coords = (int(cell.pos_x), int(cell.pos_y))
-                    defined = currentCrossword.isDefined(coords)
-                    masked = currentCrossword.getMask(coords)
-                    options = currentCrossword.getOptions(coords)
-                    entropy = currentCrossword.shannonEntropy(coords)
+                    crosswordCell = currentCrossword.grid[coords]
+                    defined = crosswordCell.isDefined()
+                    masked = crosswordCell.mask
+                    options = crosswordCell.options
+                    entropy = crosswordCell.shannonEntropy()
                     cell.update(defined, masked, options, entropy)
                 except:
                     pass
-            currentCrossword.printDefined()
         except Empty:
             pass
 

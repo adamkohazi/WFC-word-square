@@ -25,8 +25,8 @@ class WFCSolver(object):
         """
 
         startTime = time.perf_counter()
-        while not self.currentNode.crossword.isFullyDefined():
-            if self.currentNode == self.root and self.currentNode.crossword.isDeadend():
+        while not self.currentNode.crossword.grid.isFullyDefined():
+            if self.currentNode == self.root and self.currentNode.crossword.grid.isDeadend():
                 print("No more options")
                 break
             else:
@@ -41,7 +41,7 @@ class WFCSolver(object):
         Algorithm.
         """
         # Figure if we should move up or down the tree (new move or backtrack)
-        if self.currentNode.crossword.isDeadend() or not self.currentNode.crossword.isFullyValid():
+        if self.currentNode.crossword.grid.isDeadend() or not self.currentNode.crossword.isFullyValid():
             # Backtrack
             self.treelevel -= 1
             # Note the previous move
@@ -52,16 +52,16 @@ class WFCSolver(object):
             # Revert wrong move
             self.currentNode = self.currentNode.parent
             # Learn from the mistake
-            self.currentNode.crossword.addToBlacklist((x, y), letter)
+            self.currentNode.crossword.grid[(x,y)].blacklist.append(letter)
 
         else:
             # New move
             self.treelevel += 1
             # Find the coordinates of minimum entropy
-            x, y = self.currentNode.crossword.findMinEntropy()
+            x, y = self.currentNode.crossword.grid.findMinEntropy()
             # Collapse the wavefunction at these coordinates
             new_matrix = deepcopy(self.currentNode.crossword) #TODO: optimize
-            letter = new_matrix.define((x, y))
+            letter = new_matrix.grid[(x,y)].define()
             # Make a note of move
             self.currentNode = history_tree.MoveNode(x, y, letter, new_matrix, parent=self.currentNode)
             print("letter added:   (", x, ",", y, "): ", letter," - ",self.treelevel)
@@ -74,12 +74,6 @@ class WFCSolver(object):
             #self.print_tree()
             #self.currentNode.crossword.printOptions()
             #print(self.currentNode.crossword.blacklist)
-        
-        # Debug printing
-        self.currentNode.crossword.printDefined()
-        #self.currentNode.crossword.printEntropies()
-        #self.print_tree()
-        #self.currentNode.crossword.print_options()
 
     def print_tree(self):
         for pre, _, node in RenderTree(self.root):
@@ -123,7 +117,7 @@ class ThreadedWFCSolver(WFCSolver, Thread):
         """Runs iterations until the crossword is fully solved, or out of options.
         """
 
-        while not self.currentNode.crossword.isFullyDefined():
+        while not self.currentNode.crossword.grid.isFullyDefined():
             try:
                 function, args, kwargs = self.commandQueue.get_nowait()
                 if function == self.stop:
@@ -132,7 +126,7 @@ class ThreadedWFCSolver(WFCSolver, Thread):
                 else:
                     print("can't stop, won't stop")
             except queue.Empty:
-                if self.currentNode == self.root and self.currentNode.crossword.isDeadend():
+                if self.currentNode == self.root and self.currentNode.crossword.grid.isDeadend():
                     print("No more options")
                     break
                 else:
