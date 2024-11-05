@@ -92,9 +92,10 @@ class ThreadedWFCSolver(WFCSolver, Thread):
         self.updateStatus()
     
     def updateStatus(self):
-        # Remove obsolete unused statuses
+        # Remove all previous statuses
         while not self.statusQueue.empty():
             self.statusQueue.get_nowait()
+        # Place current status
         self.statusQueue.put(self.currentNode.crossword)
     
     def onThread(self, function, *args, **kwargs):

@@ -66,7 +66,7 @@ class MainApp(App):
                     break
             if coords is not None:
                 self.threadedSolver.onThread(self.threadedSolver.root.crossword.grid[coords].reset)
-                self.threadedSolver.onThread(self.threadedSolver.updateStatus)
+                self.updateOptions()
         
         elif True:
             # Find active cell:
@@ -80,8 +80,7 @@ class MainApp(App):
             if coords is not None:
                 self.threadedSolver.onThread(self.threadedSolver.root.crossword.grid[coords].setLetter, text)
                 self.threadedSolver.onThread(setattr, self.threadedSolver.root.crossword.grid[coords], 'mask', True)
-                self.threadedSolver.onThread(self.threadedSolver.root.crossword.updateOptions)
-                self.threadedSolver.onThread(self.threadedSolver.updateStatus)
+                self.updateOptions()
 
         return True
 
@@ -137,6 +136,7 @@ class MainApp(App):
     def resetSolver(self):
         print("reseting")
         self.threadedSolver.onThread(self.threadedSolver.reset)
+        self.updateOptions()
 
     def setCrosswordSize(self):
         size = (self.root.ids.width_input.current_value, self.root.ids.height_input.current_value)

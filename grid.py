@@ -65,7 +65,7 @@ class Grid(object):
             (bool): True if crossword is deadend, False otherwise.
         """
         for cell in self:
-            if sum(cell.options[letter] for letter in cell.options) == 0:
+            if cell.sumOptions() == 0:
                 return True
         return False
     
@@ -75,10 +75,7 @@ class Grid(object):
         Returns:
             (int): Total number of valid letters.
         """
-        totalOptions = 0
-        for cell in self:
-            totalOptions += sum(cell.options[letter] for letter in cell.options)
-        return totalOptions
+        return sum(cell.sumOptions() for cell in self)
     
     def findHorizontalWordLetters(self, coords) -> list[tuple[int]]:
         """Finds the coordinates for each letter of a horizontal word.
@@ -87,26 +84,25 @@ class Grid(object):
             coords (tuple): Coorinates of the cell from which the search should start.
 
         Returns:
-            letterCoords (list of tuples): List of letter coordinates from left to right.
+            (list of tuples): List of letter coordinates from left to right.
         """
-        if self[coords].options=={"-" : 1}:
+        if self[coords].isBlocked():
             return []
         
         x, y = coords
 
+        # Step backwards on the X-axis, until hitting the end, or a blocked cell. That's the start.
         xStart = x
-        while (xStart > 0) and (self[(xStart-1, y)].options != {"-" : 1}):
+        while (xStart > 0) and not self[(xStart-1, y)].isBlocked():
             xStart -= 1
         
+        # Step forwards on the X-axis, until hitting the end, or a blocked cell. That's the end.
         xEnd = x
-        while (xEnd < self.width) and (self[(xEnd, y)].options != {"-" : 1}):
+        while (xEnd < self.width) and not self[(xEnd, y)].isBlocked():
             xEnd += 1
 
-        letterCoordinates = []
-        for x in range(xStart, xEnd):
-            letterCoordinates.append((x, y))
-        
-        return letterCoordinates
+        # Add every coordinate from start to end.
+        return [(x,y) for x in range(xStart, xEnd)]
 
     def findVerticalWordLetters(self, coords) -> list[tuple[int]]:
         """Finds the coordinates for each letter of a vertical word.
@@ -117,26 +113,25 @@ class Grid(object):
         Returns:
             letterCoords (list of tuples): List of letter coordinates from top to bottom.
         """
-        if self[coords].options=={"-" : 1}:
+        if self[coords].isBlocked():
             return []
         
         x, y = coords
 
+        # Step backwards along the Y-axis, until hitting the end, or a blocked cell. That's the start.
         yStart = y
-        while (yStart > 0) and (self[(x, yStart-1)].options != {"-" : 1}):
+        while (yStart > 0) and not self[(x, yStart-1)].isBlocked():
             yStart -= 1
         
+        # Step forwards along the Y-axis, until hitting the end, or a blocked cell. That's the end.
         yEnd = y
-        while (yEnd < self.height) and (self[(x, yEnd)].options != {"-" : 1}):
+        while (yEnd < self.height) and not self[(x, yEnd)].isBlocked():
             yEnd += 1
 
-        letterCoordinates = []
-        for y in range(yStart, yEnd):
-            letterCoordinates.append((x, y))
-        
-        return letterCoordinates
+        # Add every coordinate from start to end.
+        return [(x,y) for y in range(yStart, yEnd)]
     
-    def findMinEntropy(self, noise=None):
+    def findMinEntropy(self, noise=None) -> tuple[int]:
         """Finds the coordinates with the lowest entropy (e.g. the "most likely" letter)
 
         Arguments:
@@ -178,20 +173,20 @@ class Grid(object):
                 coords = (x,y)
 
                 # Skip if not part of a word
-                if self[coords].options == {"-" : 1} or self[coords].mask:
+                if self[coords].isBlocked() or self[coords].mask:
                     continue
                 
                 # Check horizontal word
                 if not horizontalChecked[y][x]:
                     horizontalCoords = self.findHorizontalWordLetters(coords)
                     # Skip if 2 letters or shorter:
-                    if len(horizontalCoords)>2:
+                    if len(horizontalCoords) > 2:
                         # Skip if any letter is undefined
                         if not all(self[letterCoords].isDefined() for letterCoords in horizontalCoords):
                             continue
 
                         # Add word to list
-                        words.append(''.join([next(iter(self[letterCoords].options)) for letterCoords in horizontalCoords]))
+                        words.append(''.join([self[letterCoords].getDefined() for letterCoords in horizontalCoords]))
                         # Mark all letters are checked
                         for letterCoords in horizontalCoords:
                             u,v = letterCoords
@@ -201,13 +196,13 @@ class Grid(object):
                 if not verticalChecked[y][x]:
                     verticalCoords = self.findHorizontalWordLetters(coords)
                     # Skip if 2 letters or shorter:
-                    if len(verticalCoords)>2:
+                    if len(verticalCoords) > 2:
                         # Skip if any letter is undefined
                         if not all(self[letterCoords].isDefined() for letterCoords in verticalCoords):
                             continue
 
                         # Add word to list
-                        words.append(''.join([next(iter(self[letterCoords].options)) for letterCoords in verticalCoords]))
+                        words.append(''.join([self[letterCoords].getDefined() for letterCoords in verticalCoords]))
                         # Mark all letters are checked
                         for letterCoords in verticalCoords:
                             u,v = letterCoords

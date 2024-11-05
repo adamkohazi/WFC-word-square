@@ -56,12 +56,14 @@ class Cell(ToggleButtonBehavior, FloatLayout):
         self.entropy = entropy
 
         if defined:
-            defined_letter = next(iter(options))
+            for letter in self.options:
+                if self.options[letter] > 0:
+                    defined_letter = letter
             self.main_letter.text = defined_letter.upper()
             self.letter_options.text = ''
         else:
             self.main_letter.text = ''
-            self.letter_options.text = ''.join(options.keys())
+            self.letter_options.text = ''.join(letter for letter, count in sorted(self.options.items(), key=lambda item: item[1], reverse=True) if count > 0)
         
         self.drawBackground()
 

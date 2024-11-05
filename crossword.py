@@ -92,6 +92,8 @@ class Crossword(object):
     def updateOptions(self):
         """Iteratively updates letter options, until a minimum subset is reached. After this update, the crossword is either solvable and all invalid letters are eliminated or a deadend is confirmed.
         """
+        #TODO: reset options?
+        
         old_total_options = self.grid.totalOptions()
         
         startTime = time.perf_counter()
