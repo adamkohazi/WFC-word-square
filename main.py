@@ -79,7 +79,7 @@ class MainApp(App):
             # Set letter and mask, than update
             if coords is not None:
                 self.threadedSolver.onThread(self.threadedSolver.root.crossword.grid[coords].setLetter, text)
-                self.threadedSolver.onThread(self.threadedSolver.root.crossword.grid[coords].setMask, True)
+                self.threadedSolver.onThread(setattr, self.threadedSolver.root.crossword.grid[coords], 'mask', True)
                 self.threadedSolver.onThread(self.threadedSolver.root.crossword.updateOptions)
                 self.threadedSolver.onThread(self.threadedSolver.updateStatus)
 

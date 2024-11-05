@@ -44,15 +44,22 @@ class Cell(object):
     
     @property
     def mask(self) -> bool:
+        """Get the current mask status
+
+        Returns:
+            _mask(bool): True if cell is masked.
+        """
         return self._mask
 
     @mask.setter
     def mask(self, value:bool = True):
+        """Sets the current mask status.
+
+        Arguments:
+            value(bool): True if cell is masked. True by default.
+        """
         self._mask = value
-    
-    def setMask(self, value=True):
-        self._mask = value
-    
+
     def setLetterCount(self, letter:str, count:int):
         """Sets the count of a single letter. If count is 0, deletes the letter from valid options.
         
@@ -99,7 +106,7 @@ class Cell(object):
         return (sum(self.options[letter] > 0 for letter in self.options) == 1)
     
     def define(self) -> str:
-        """Defines a single letter based on current options.
+        """Defines a single letter randomly, weighted by current options.
 
         Returns:
             letter (char): Letter that was choosen for the cell.
