@@ -47,7 +47,13 @@ class MainApp(App):
         self._keyboard = None
 
     def _on_keyboard_down(self, keyboard, keycode, text, modifiers):
-        
+        # Find active cell:
+        activeCellCoords = None
+        for cell in self.root.ids.grid.children:
+            if cell.state == "down":
+                activeCellCoords = (int(cell.pos_x), int(cell.pos_y))
+                break
+
         if keycode[1] == 'up':
             self.moveActiveCell((0, -1))
         elif keycode[1] == 'down':
@@ -58,28 +64,23 @@ class MainApp(App):
             self.moveActiveCell((1, 0))
 
         elif keycode[1] == 'backspace' or keycode[1] == 'delete' or keycode[1] == 'space':
-            # Find active cell:
-            coords = None
-            for cell in self.root.ids.grid.children:
-                if cell.state == "down":
-                    coords = (int(cell.pos_x), int(cell.pos_y))
-                    break
-            if coords is not None:
-                self.threadedSolver.onThread(self.threadedSolver.root.crossword.grid[coords].reset)
+            if activeCellCoords is not None:
+                self.threadedSolver.onThread(self.threadedSolver.root.crossword.grid[activeCellCoords].reset)
                 self.updateOptions()
         
-        elif True:
-            # Find active cell:
-            coords = None
-            for cell in self.root.ids.grid.children:
-                if cell.state == "down":
-                    coords = (int(cell.pos_x), int(cell.pos_y))
-                    break
+        elif keycode[1] == '-':
+            # Block cell
+            if activeCellCoords is not None:
+                self.threadedSolver.onThread(setattr, self.threadedSolver.root.crossword.grid[activeCellCoords], 'blocked', True)
+                self.threadedSolver.onThread(setattr, self.threadedSolver.root.crossword.grid[activeCellCoords], 'mask', True)
+                self.updateOptions()
 
+        else:
             # Set letter and mask, than update
-            if coords is not None:
-                self.threadedSolver.onThread(self.threadedSolver.root.crossword.grid[coords].setLetter, text)
-                self.threadedSolver.onThread(setattr, self.threadedSolver.root.crossword.grid[coords], 'mask', True)
+            if activeCellCoords is not None:
+                self.threadedSolver.onThread(setattr, self.threadedSolver.root.crossword.grid[activeCellCoords], 'blocked', False)
+                self.threadedSolver.onThread(self.threadedSolver.root.crossword.grid[activeCellCoords].setLetter, text)
+                self.threadedSolver.onThread(setattr, self.threadedSolver.root.crossword.grid[activeCellCoords], 'mask', True)
                 self.updateOptions()
 
         return True
@@ -112,9 +113,10 @@ class MainApp(App):
                     crosswordCell = currentCrossword.grid[coords]
                     defined = crosswordCell.isDefined()
                     masked = crosswordCell.mask
+                    blocked = crosswordCell.blocked
                     options = crosswordCell.options
                     entropy = crosswordCell.shannonEntropy()
-                    cell.update(defined, masked, options, entropy)
+                    cell.update(defined, masked, blocked, options, entropy)
                 except:
                     pass
         except Empty:

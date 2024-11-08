@@ -16,6 +16,7 @@ class Cell(ToggleButtonBehavior, FloatLayout):
 
         self.defined = False
         self.masked = False
+        self.blocked = False
         self.options = ''
         self.entropy = 1.0
 
@@ -36,7 +37,7 @@ class Cell(ToggleButtonBehavior, FloatLayout):
     def drawBackground(self, *args):
         if self.defined:
             if self.masked:
-                if self.main_letter.text == '-':
+                if self.blocked:
                     self.drawRectangle((0,0,0,1))
                 else:
                     self.drawRectangle((1, 1, 0.5, 1))
@@ -49,9 +50,10 @@ class Cell(ToggleButtonBehavior, FloatLayout):
             else:
                 self.drawRectangle((1, 0, 0, 1))
 
-    def update(self, defined, masked, options, entropy):
+    def update(self, defined, masked, blocked, options, entropy):
         self.defined = defined
         self.masked = masked
+        self.blocked = blocked
         self.options = options
         self.entropy = entropy
 

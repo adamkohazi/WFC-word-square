@@ -29,19 +29,20 @@ class Cell(object):
             letterset (string): All valid letters concatenated.
         """
         self.coords = coords
-        self.letterset = letterset
+        self.options = {letter: 0 for letter in letterset}
         self.reset()
     
     def reset(self) -> None:
-        """Disable mask, empty blacklist, set every letter option.
+        """Disable mask, empty blacklist, unblock cell, set every letter option.
         
         Arguments:
             coords (tuple): Coorinates of the cell to reset.
         """
         self.mask = False
+        self.blocked = False
         self.blacklist = []
-        self.options = dict.fromkeys(self.letterset, 9999)
-    
+        self.options = {letter: 9999 for letter in self.options}
+
     @property
     def mask(self) -> bool:
         """Get the current mask status
@@ -60,13 +61,33 @@ class Cell(object):
         """
         self._mask = mask
     
+    @property
+    def blocked(self) -> bool:
+        """Checks if cell is blocked (no letter allowed).
+
+        Returns:
+            _blocked (bool): True if cell is blocked.
+        """
+        return self._blocked
+
+    @blocked.setter
+    def blocked(self, blocked:bool) -> None:
+        """Blocks or unblocks a cell."
+
+        Arguments:
+            blocked (bool): True if cell is blocked.
+        """
+        if blocked:
+            self.options = {letter:0 for letter in self.options}
+        self._blocked = blocked
+    
     def setLetter(self, letter:str) -> None:
         """Sets a single letter, discarding all other options.
 
         Arguments:
             letter (char): Letter to set.
         """
-        self.options = {letter : 1}
+        self.options = {option:int(letter==option) for option in self.options}
 
     def setLetterCount(self, letter: str, count: int) -> None:
         """Sets the count of a single letter. If count is 0, deletes the letter from valid options.
@@ -102,12 +123,12 @@ class Cell(object):
         return entropy
 
     def isDefined(self) -> bool:
-        """Checks if there's a only single letter defined.
+        """Checks if there's a only single letter defined or cell is blocked.
 
         Returns:
-            (bool): True if single letter is defined, False otherwise.
+            (bool): True if single letter is defined or cell is blocked, False otherwise.
         """
-        return (sum(self.options[letter] > 0 for letter in self.options) == 1)
+        return (sum(self.options[letter] > 0 for letter in self.options) == 1) or self.blocked
 
     def getDefined(self) -> str:
         """Returns the first (hopefully only) letter that is valid.
@@ -133,13 +154,5 @@ class Cell(object):
             if rnd < 0:
                 self.setLetter(letter)
                 return letter
-    
-    def isBlocked(self) -> bool:
-        """Checks if cell is blocked (no letter allowed).
-
-        Returns:
-            (bool): True if single letter is blocked, False otherwise.
-        """
-        return self.options == {"-" : 1}
     
     

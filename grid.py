@@ -41,8 +41,7 @@ class Grid(object):
                 yield self.cells[y][x]
     
     def reset(self):
-        # TODO? reset blacklist?
-        # Reset options if cell is not masked
+        # Only reset cells that are not masked
         for cell in self:
             if not cell.mask:
                 cell.reset()
@@ -86,19 +85,19 @@ class Grid(object):
         Returns:
             (list of tuples): List of letter coordinates from left to right.
         """
-        if self[coords].isBlocked():
+        if self[coords].blocked:
             return []
         
         x, y = coords
 
         # Step backwards on the X-axis, until hitting the end, or a blocked cell. That's the start.
         xStart = x
-        while (xStart > 0) and not self[(xStart-1, y)].isBlocked():
+        while (xStart > 0) and not self[(xStart-1, y)].blocked:
             xStart -= 1
         
         # Step forwards on the X-axis, until hitting the end, or a blocked cell. That's the end.
         xEnd = x
-        while (xEnd < self.width) and not self[(xEnd, y)].isBlocked():
+        while (xEnd < self.width) and not self[(xEnd, y)].blocked:
             xEnd += 1
 
         # Add every coordinate from start to end.
@@ -113,19 +112,19 @@ class Grid(object):
         Returns:
             letterCoords (list of tuples): List of letter coordinates from top to bottom.
         """
-        if self[coords].isBlocked():
+        if self[coords].blocked:
             return []
         
         x, y = coords
 
         # Step backwards along the Y-axis, until hitting the end, or a blocked cell. That's the start.
         yStart = y
-        while (yStart > 0) and not self[(x, yStart-1)].isBlocked():
+        while (yStart > 0) and not self[(x, yStart-1)].blocked:
             yStart -= 1
         
         # Step forwards along the Y-axis, until hitting the end, or a blocked cell. That's the end.
         yEnd = y
-        while (yEnd < self.height) and not self[(x, yEnd)].isBlocked():
+        while (yEnd < self.height) and not self[(x, yEnd)].blocked:
             yEnd += 1
 
         # Add every coordinate from start to end.
@@ -173,7 +172,7 @@ class Grid(object):
                 coords = (x,y)
 
                 # Skip if not part of a word
-                if self[coords].isBlocked() or self[coords].mask:
+                if self[coords].blocked or self[coords].mask:
                     continue
                 
                 # Check horizontal word
