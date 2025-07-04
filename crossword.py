@@ -166,7 +166,13 @@ class Crossword(object):
         Returns:
             (bool): True if every full word is valid, False otherwise.
         """
-        for word in self.grid.allWords():
+        all_words = self.grid.allWords()
+        for word in all_words:
+            # Word is not unique
+            if all_words.count(word)>1:
+                return False
+            # Word is not valid
             if word not in self.dictionary.lookup[len(word)]:
                 return False
+            
         return True

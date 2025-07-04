@@ -25,7 +25,7 @@ class WFCSolver(object):
         """
 
         startTime = time.perf_counter()
-        while not self.currentNode.crossword.grid.isFullyDefined():
+        while not (self.currentNode.crossword.grid.isFullyDefined() and self.currentNode.crossword.isFullyValid()):
             if self.currentNode == self.root and self.currentNode.crossword.grid.isDeadend():
                 print("No more options")
                 break
